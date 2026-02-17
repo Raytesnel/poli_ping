@@ -1,7 +1,9 @@
 use axum::{Json, http::StatusCode};
 use reqwest::Client;
 
-use crate::models::{api_models::ApiResponse, dto::{MotieDto,VoteDto}};
+use crate::models::api_models::ApiResponse;
+use shared::{MotieDto,VoteDto};
+
 pub async fn get_moties(max_number:&u16) -> Result<Json<Vec<MotieDto>>, StatusCode> {
     let moties = fetch_moties_from_api(&max_number).await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     let result = transform_moties(moties).await?;

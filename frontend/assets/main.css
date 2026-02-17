@@ -16,7 +16,7 @@ html, body {
     justify-content: space-between;
 }
 
-#dogview {
+#motion_view {
     max-height: 80vh;
     flex-grow: 1;
     width: 100%;
@@ -26,7 +26,7 @@ html, body {
     justify-content: center;
 }
 
-#dogview img {
+#motion_view img {
     display: block;
     max-width: 50%;
     max-height: 50%;
@@ -123,29 +123,5 @@ a#heart {
     justify-content: center;
     gap: 10px;
     padding: 10px;
-}
-
-.favorite-dog {
-    max-height: 180px;
-    max-width: 60%;
-    position: relative;
-}
-
-.favorite-dog img {
-    max-height: 150px;
-    border-radius: 5px;
-    margin: 5px;
-}
-
-.favorite-dog:hover button {
-    display: block;
-}
-
-.favorite-dog button {
-    display: none;
-    position: absolute;
-    bottom: 10px;
-    left: 10px;
-    z-index: 10;
 }
 

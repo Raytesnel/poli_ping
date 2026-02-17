@@ -121,9 +121,9 @@ dependencies = [
  "axum",
  "reqwest",
  "serde",
- "serde_json",
  "shared",
  "tokio",
+ "tower-http",
 ]
 
 [[package]]

@@ -1,7 +1,8 @@
+use dioxus::logger::tracing;
 use dioxus::prelude::*;
 use reqwest::get;
-use shared::{MotieDto, GET_MOTIES};
-const BASE_URL: &str = "/http://localhost:8080";
+use shared::{GET_FIRST_MOTIE, MotieDto, VoteDto};
+const BASE_URL: &str = "http://localhost:3000";
 
 fn main() {
     dioxus::launch(App);
@@ -27,29 +28,22 @@ fn Title() -> Element {
 }
 #[component]
 fn MotionView() -> Element {
-    let mut payload_moties = use_resource(|| async move {
-        reqwest::get(&format!("{}/{}",BASE_URL,GET_MOTIES))
+    let mut motion = use_resource(|| async move {
+        reqwest::get(&format!("{}{}", BASE_URL, GET_FIRST_MOTIE))
             .await
             .unwrap()
             .json::<MotieDto>()
             .await
             .unwrap()
     });
-
+    tracing::info!("{:?}",motion);
     rsx! {
         div { id: "motion_view",
-            div { id: "motion",
-
-            }
+                {motion.value().cloned().map(|m| m.title).unwrap_or_else(|| "Loading...".to_string())}
         }
         div { id: "buttons",
-            button { onclick: move |_| payload_moties.restart(), id: "skip", "not intereset" }
-            button { onclick: move |_| payload_moties.restart(), id: "save", "vote!" }
+            button { onclick: move |_| motion.restart(), id: "skip", "not intereset" }
+            button { onclick: move |_| motion.restart(), id: "save", "vote!" }
         }
     }
 }
-
-
-
-
-

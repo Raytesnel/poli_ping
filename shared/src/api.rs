@@ -1,0 +1,1 @@
+pub const GET_MOTIES: &str = "/get_moties";

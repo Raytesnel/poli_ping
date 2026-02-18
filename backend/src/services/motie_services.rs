@@ -1,4 +1,4 @@
-use axum::{Json, http::StatusCode};
+use axum::{http::StatusCode, Json};
 use reqwest::Client;
 
 use crate::models::api_models::ApiResponse;
@@ -56,8 +56,8 @@ async fn transform_moties(moties: ApiResponse) -> Result<Vec<MotieDto>, StatusCo
             };
             let motie = MotieDto {
                 id: m.id,
-                title: m.titel,
-                description: m.onderwerp,
+                title: m.onderwerp.unwrap_or_else(|| "Unknown".to_string()),
+                description: m.titel, // Weird but true. they put more info in title and some title in description...
                 result: besluit_result.trim_end_matches('.').to_string(),
                 timestamp: m.gewijzigd_op,
                 votes,

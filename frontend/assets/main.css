@@ -1,12 +1,15 @@
 /* App-wide styling */
 html, body {
-    background-color: #0e0e0e;
-    color: white;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    height: 100%;
-    width: 100%;
-    overflow: hidden;
     margin: 0;
+    height: 100%;
+    background-color: #615c5c;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: white;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
 }
 
 #main {
@@ -17,45 +20,22 @@ html, body {
 }
 
 #motion_view {
-    max-height: 80vh;
-    flex-grow: 1;
-    width: 100%;
+    flex: 1;
     display: flex;
-    flex-direction: column;
-    align-items: center;
     justify-content: center;
+    align-items: center;
 }
 
-#motion_view img {
-    display: block;
-    max-width: 50%;
-    max-height: 50%;
-    transform: scale(1.8);
-    border-radius: 5px;
-    border: 1px solid rgb(233, 233, 233);
-    box-shadow: 0px 0px 5px 1px rgb(216, 216, 216, 0.5);
-}
 
 #title {
     text-align: center;
-    padding-top: 10px;
-    border-bottom: 1px solid #a8a8a8;
-    display: flex;
-    flex-direction: row;
-    justify-content: space-evenly;
-    align-items: center;
+    padding: 1rem 0;
+    border-bottom: 1px solid #777;
 }
 
 #title a {
     text-decoration: none;
     color: white;
-}
-
-a#heart {
-    background-color: white;
-    color: red;
-    padding: 5px;
-    border-radius: 5px;
 }
 
 #title span {
@@ -76,8 +56,13 @@ a#heart {
     padding-bottom: 20px;
 }
 
-#skip { background-color: gray }
-#save { background-color: green; }
+#skip {
+    background-color: #333131
+}
+
+#save {
+    background-color: #2a5521;
+}
 
 #skip, #save {
     padding: 5px 30px 5px 30px;
@@ -89,7 +74,6 @@ a#heart {
 
 #navbar {
     border: 1px solid rgb(233, 233, 233);
-    border-width: 1px 0px 0px 0px;
     display: flex;
     flex-direction: row;
     justify-content: space-evenly;

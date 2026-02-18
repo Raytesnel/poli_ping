@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 pub struct MotieDto {
     pub id: String,
     pub title: String,
-    pub description: Option<String>,
+    pub description: String,
     pub result: String,
     pub timestamp: String,
     pub votes: Vec<VoteDto>,

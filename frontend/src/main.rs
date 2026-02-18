@@ -1,7 +1,10 @@
+mod components;
+
+use components::card::*;
 use dioxus::logger::tracing;
 use dioxus::prelude::*;
 use reqwest::get;
-use shared::{GET_FIRST_MOTIE, MotieDto, VoteDto};
+use shared::{MotieDto, VoteDto, GET_FIRST_MOTIE};
 const BASE_URL: &str = "http://localhost:3000";
 
 fn main() {
@@ -36,14 +39,36 @@ fn MotionView() -> Element {
             .await
             .unwrap()
     });
-    tracing::info!("{:?}",motion);
-    rsx! {
-        div { id: "motion_view",
-                {motion.value().cloned().map(|m| m.title).unwrap_or_else(|| "Loading...".to_string())}
+    tracing::info!("{:?}", motion);
+    let content = motion.value().with(|opt| {
+        if let Some(m) = opt {
+            rsx! {
+            Card {
+                CardHeader {
+                    CardTitle { "{m.title}" }
+                }
+                CardContent {
+                    p { "{m.description}" }
+                }
+                CardFooter {
+                    button { onclick: move |_| motion.restart(), "not interested" }
+                    button { onclick: move |_| motion.restart(), "vote!" }
+                }
+            }
         }
-        div { id: "buttons",
-            button { onclick: move |_| motion.restart(), id: "skip", "not intereset" }
-            button { onclick: move |_| motion.restart(), id: "save", "vote!" }
+        } else {
+            rsx! {
+            Card {
+                CardHeader {
+                    CardTitle { "Loading..." }
+                }
+                CardContent {
+                    p { "Fetching motion..." }
+                }
+            }
         }
-    }
+        }
+    });
+
+    rsx! { div { id: "motion_view",{content}} }
 }

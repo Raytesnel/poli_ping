@@ -1,12 +1,16 @@
+use crate::app::AppState;
 use crate::models;
 use crate::services::motie_services;
-use axum::{extract::Query, http::StatusCode, routing::get, Json, Router};
+use axum::{Json, Router, extract::Query, extract::State, http::StatusCode, routing::get};
 use shared::MotieDto;
-use shared::{GET_MOTIES,GET_FIRST_MOTIE};
-pub fn routes() -> Router {
+use shared::{GET_NEXT_MOTIE, GET_MOTIES};
+
+const USER_ID: &str = "dev-user";
+
+pub fn routes() -> Router<AppState>  {
     Router::new()
         .route(GET_MOTIES, get(get_moties))
-        .route(GET_FIRST_MOTIE, get(get_first_motie))
+        .route(GET_NEXT_MOTIE, get(get_nex_user_motie))
 }
 
 async fn get_moties(
@@ -16,17 +20,9 @@ async fn get_moties(
     motie_services::get_moties(&max_number).await
 }
 
-async fn get_first_motie(
-) -> Result<Json<MotieDto>, StatusCode> {
-    let max_number = 200;
-
-    let moties = motie_services::get_moties(&max_number)
+async fn get_nex_user_motie(State(state): State<AppState>) -> Result<Json<MotieDto>, StatusCode> {
+    let motie = motie_services::get_next_motie(&state.pool, USER_ID)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-
-    if let Some(first) = moties.first().cloned() {
-        Ok(Json(first))
-    } else {
-        Err(StatusCode::NOT_FOUND)
-    }
+    Ok(Json(motie))
 }

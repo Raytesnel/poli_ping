@@ -1,18 +1,27 @@
 use axum::{http::StatusCode, Json};
 use reqwest::Client;
+use sqlx::SqlitePool;
+use crate::repository::motie;
 
 use crate::models::api_models::ApiResponse;
 use shared::{MotieDto, VoteDto};
 
+
+
 pub async fn get_moties(max_number: &u16) -> Result<Json<Vec<MotieDto>>, StatusCode> {
-    let moties = fetch_moties_from_api(&max_number)
+
+    let moties = fetch_moties_from_api(max_number)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-    let result = transform_moties(moties).await?;
+
+    let result = transform_moties(moties)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
     Ok(Json(result))
 }
 
-async fn fetch_moties_from_api(max_number: &u16) -> Result<ApiResponse, reqwest::Error> {
+async fn fetch_moties_from_api(max_number: &u16) -> Result<ApiResponse, anyhow::Error> {
     let url = format!(
         "https://gegevensmagazijn.tweedekamer.nl/OData/v4/2.0/Zaak?$filter=verwijderd%20eq%20false%20and%20Soort%20eq%20'Motie'&$orderby=GewijzigdOp%20desc&$top={}&$expand=Besluit($expand=Stemming($expand=Fractie))",
         max_number
@@ -30,7 +39,7 @@ async fn fetch_moties_from_api(max_number: &u16) -> Result<ApiResponse, reqwest:
     Ok(json)
 }
 
-async fn transform_moties(moties: ApiResponse) -> Result<Vec<MotieDto>, StatusCode> {
+async fn transform_moties(moties: ApiResponse) -> Result<Vec<MotieDto>, anyhow::Error> {
     let mut result = Vec::new();
     for m in moties.value {
         if m.besluit.is_empty() {

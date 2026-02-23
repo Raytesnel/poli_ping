@@ -4,9 +4,9 @@ use components::card::*;
 use dioxus::logger::tracing;
 use dioxus::prelude::*;
 use reqwest::get;
-use shared::{MotieDto, VoteDto, GET_FIRST_MOTIE};
+use shared::{MotieDto, VoteDto, GET_NEXT_MOTIE};
 const BASE_URL: &str = "http://localhost:3000";
-
+const USER_ID: &str = "dev-user";
 fn main() {
     dioxus::launch(App);
 }
@@ -32,7 +32,7 @@ fn Title() -> Element {
 #[component]
 fn MotionView() -> Element {
     let mut motion = use_resource(|| async move {
-        reqwest::get(&format!("{}{}", BASE_URL, GET_FIRST_MOTIE))
+        get(&format!("{}{}", BASE_URL, GET_NEXT_MOTIE))
             .await
             .unwrap()
             .json::<MotieDto>()

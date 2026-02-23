@@ -70,3 +70,50 @@ async fn transform_moties(moties: ApiResponse) -> Result<Vec<MotieDto>, StatusCo
 
     Ok(result)
 }
+
+pub async fn sync_latest_moties(
+    pool: &SqlitePool,
+    max_number: u16,
+) -> Result<(), anyhow::Error> {
+    let api_response = fetch_moties_from_api(&max_number).await?;
+    let transformed = transform_moties(api_response).await?;
+
+    for motie in transformed {
+        let motie_id = motie::insert_motie(pool, &motie).await?;
+
+        for vote in &motie.votes {
+            motie::insert_party_vote(
+                pool,
+                motie_id,
+                &vote.party,
+                &vote.vote,
+            )
+                .await?;
+        }
+    }
+
+    Ok(())
+}
+
+
+pub async fn get_next_motie(pool: &SqlitePool, user_id: &str) -> Result<MotieDto, anyhow::Error> {
+    let motie = motie::get_next_unseen_motie(pool, &user_id)
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("No more moties"))?;
+    let votes = motie::get_party_votes(pool, motie.id).await?;
+
+    Ok(MotieDto {
+        id: motie.external_id,
+        title: motie.title,
+        description: motie.description,
+        result: motie.result,
+        timestamp: motie.timestamp.to_string(),
+        votes: votes
+            .into_iter()
+            .map(|v| VoteDto {
+                party: v.party,
+                vote: v.vote,
+            })
+            .collect(),
+    })
+}

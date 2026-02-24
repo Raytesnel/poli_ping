@@ -1,4 +1,5 @@
 use crate::routes::moties;
+use crate::routes::votes;
 use axum::Router;
 use sqlx::SqlitePool;
 
@@ -17,6 +18,7 @@ pub async fn run(pool: SqlitePool) {
     let state = AppState { pool };
     let app = Router::new()
         .merge(moties::routes())
+        .merge(votes::routes())
         .layer(cors)
         .with_state(state);
 

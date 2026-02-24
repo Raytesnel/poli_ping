@@ -1,0 +1,22 @@
+use sqlx::SqlitePool;
+
+pub async fn insert_user_vote(
+    pool: &SqlitePool,
+    user_id: &str,
+    motie_id: i32,
+    vote: &str,
+) -> Result<(), sqlx::Error> {
+    sqlx::query!(
+        r#"
+        INSERT INTO user_votes (user_id, motie_id, vote)
+        VALUES ($1, $2, $3)
+        "#,
+        user_id,
+        motie_id,
+        vote
+    )
+        .execute(pool)
+        .await?;
+
+    Ok(())
+}

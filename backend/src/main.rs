@@ -22,7 +22,6 @@ pub async fn open_sqlite_pool() -> SqlitePool {
     println!("Resolved DB path: {db_path}");
     let abs_path = std::env::current_dir().unwrap().join(db_path);
     println!("Absolute path: {:?}", abs_path);
-    &std::env::var("DATABASE_URL_INTERNAL").unwrap();
 
     SqlitePool::connect(&database_url).await.unwrap_or_else(|err| {
         panic!(

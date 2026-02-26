@@ -4,6 +4,7 @@ use axum::Router;
 use sqlx::SqlitePool;
 
 use tower_http::cors::{Any, CorsLayer};
+use shared::BASE_URL_BACKEND;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -22,6 +23,6 @@ pub async fn run(pool: SqlitePool) {
         .layer(cors)
         .with_state(state);
 
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000").await.unwrap();
+    let listener = tokio::net::TcpListener::bind(BASE_URL_BACKEND).await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }

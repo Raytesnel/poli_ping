@@ -1,6 +1,7 @@
 use sqlx::{SqlitePool};
 use crate::models::db_models::{Motie, PartyVote};
 use shared::MotieDto;
+use crate::models::api_models::MotieTransformed;
 
 pub async fn get_next_unseen_motie(
     pool: &SqlitePool,
@@ -45,7 +46,7 @@ pub async fn get_party_votes(
 
 pub async fn insert_motie(
     pool: &SqlitePool,
-    motie: &MotieDto,
+    motie: &MotieTransformed,
 ) -> Result<i64, sqlx::Error> {
     sqlx::query!(
         r#"
@@ -53,7 +54,7 @@ pub async fn insert_motie(
         (external_id, title, description, result, timestamp)
         VALUES (?, ?, ?, ?, ?)
         "#,
-        motie.id,
+        motie.external_id,
         motie.title,
         motie.description,
         motie.result,
@@ -66,7 +67,7 @@ pub async fn insert_motie(
         r#"
         SELECT id FROM moties WHERE external_id = ?
         "#,
-        motie.id
+        motie.external_id
     )
         .fetch_one(pool)
         .await?;

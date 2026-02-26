@@ -4,6 +4,7 @@ use crate::services::motie_services;
 use axum::{Json, Router, extract::Query, extract::State, http::StatusCode, routing::get};
 use shared::MotieDto;
 use shared::{GET_NEXT_MOTIE, GET_MOTIES};
+use crate::models::api_models::MotieTransformed;
 
 const USER_ID: &str = "dev-user";
 
@@ -15,7 +16,7 @@ pub fn routes() -> Router<AppState>  {
 
 async fn get_moties(
     Query(motion_param): Query<models::api_models::GetMotiesQuery>,
-) -> Result<Json<Vec<MotieDto>>, StatusCode> {
+) -> Result<Json<Vec<MotieTransformed>>, StatusCode> {
     let max_number = motion_param.max_number.unwrap_or(100);
     motie_services::get_moties(&max_number).await
 }

@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MotieDto {
-    pub id: String,
+    pub id: i32,
     pub title: String,
     pub description: String,
     pub result: String,

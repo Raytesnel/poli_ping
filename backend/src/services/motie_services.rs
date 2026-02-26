@@ -3,12 +3,12 @@ use reqwest::Client;
 use sqlx::SqlitePool;
 use crate::repository::motie;
 
-use crate::models::api_models::ApiResponse;
+use crate::models::api_models::{ApiResponse, MotieTransformed};
 use shared::{MotieDto, VoteDto};
 
 
 
-pub async fn get_moties(max_number: &u16) -> Result<Json<Vec<MotieDto>>, StatusCode> {
+pub async fn get_moties(max_number: &u16) -> Result<Json<Vec<MotieTransformed>>, StatusCode> {
 
     let moties = fetch_moties_from_api(max_number)
         .await
@@ -39,7 +39,7 @@ async fn fetch_moties_from_api(max_number: &u16) -> Result<ApiResponse, anyhow::
     Ok(json)
 }
 
-async fn transform_moties(moties: ApiResponse) -> Result<Vec<MotieDto>, anyhow::Error> {
+async fn transform_moties(moties: ApiResponse) -> Result<Vec<MotieTransformed>, anyhow::Error> {
     let mut result = Vec::new();
     for m in moties.value {
         if m.besluit.is_empty() {
@@ -63,8 +63,8 @@ async fn transform_moties(moties: ApiResponse) -> Result<Vec<MotieDto>, anyhow::
             else {
                 continue;
             };
-            let motie = MotieDto {
-                id: m.id,
+            let motie = MotieTransformed {
+                external_id: m.id,
                 title: m.onderwerp.unwrap_or_else(|| "Unknown".to_string()),
                 description: m.titel, // Weird but true. they put more info in title and some title in description...
                 result: besluit_result.trim_end_matches('.').to_string(),
@@ -112,7 +112,7 @@ pub async fn get_next_motie(pool: &SqlitePool, user_id: &str) -> Result<MotieDto
     let votes = motie::get_party_votes(pool, motie.id).await?;
 
     Ok(MotieDto {
-        id: motie.external_id,
+        id: motie.id as i32,
         title: motie.title,
         description: motie.description,
         result: motie.result,

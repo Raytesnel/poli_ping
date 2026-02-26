@@ -67,3 +67,19 @@ pub struct Stemming {
     pub actor_fractie: Option<String>,
 
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct MotieTransformed {
+    pub external_id: String,
+    pub title: String,
+    pub description: String,
+    pub result: String,
+    pub timestamp: String,
+    pub votes: Vec<shared::VoteDto>,
+}
+
+#[derive(Debug, Serialize,Deserialize,Clone)]
+pub struct VoteTransformed {
+    pub party: String,
+    pub vote: String,
+}

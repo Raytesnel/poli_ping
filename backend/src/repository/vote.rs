@@ -7,9 +7,11 @@ pub async fn insert_user_vote(
     vote: &str,
 ) -> Result<(), sqlx::Error> {
     sqlx::query!(
-        r#"
+            r#"
         INSERT INTO user_votes (user_id, motie_id, vote)
         VALUES ($1, $2, $3)
+        ON CONFLICT(user_id, motie_id)
+        DO UPDATE SET vote = excluded.vote
         "#,
         user_id,
         motie_id,

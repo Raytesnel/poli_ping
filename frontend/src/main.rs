@@ -3,9 +3,10 @@ mod components;
 use components::card::*;
 use dioxus::logger::tracing;
 use dioxus::prelude::*;
+use reqwest::Client;
 use reqwest::get;
-use shared::{MotieDto, VoteDto, GET_NEXT_MOTIE};
-const BASE_URL: &str = "http://localhost:3000";
+use shared::{AddUserVoteRequest, GET_NEXT_MOTIE, MotieDto, POST_USER_VOTE, VoteDto};
+const BASE_URL: &str = "http://127.0.0.1:3000";
 const USER_ID: &str = "dev-user";
 fn main() {
     dioxus::launch(App);
@@ -29,8 +30,25 @@ fn Title() -> Element {
         }
     }
 }
+
+async fn send_vote(client: Client, motie_id: i32, vote_value: &str) {
+    let vote = AddUserVoteRequest {
+        user_id: USER_ID.to_string(),
+        motie_id,
+        vote: vote_value.to_string(),
+    };
+
+    client
+        .post(&format!("{}{}", BASE_URL, POST_USER_VOTE))
+        .json(&vote)
+        .send()
+        .await
+        .unwrap();
+}
+
 #[component]
 fn MotionView() -> Element {
+    let client = Client::new();
     let mut motion = use_resource(|| async move {
         get(&format!("{}{}", BASE_URL, GET_NEXT_MOTIE))
             .await
@@ -39,9 +57,23 @@ fn MotionView() -> Element {
             .await
             .unwrap()
     });
-    tracing::info!("{:?}", motion);
     let content = motion.value().with(|opt| {
         if let Some(m) = opt {
+            let motie_id = m.id;
+            let vote_button = |label: &str, vote_value: &'static str, client:Client| {
+                rsx! {
+                    button {
+                        onclick: move |_| {
+                            let value = client.clone();
+                            spawn(async move {
+                                send_vote(value, motie_id, vote_value).await;
+                                motion.restart();
+                            });
+                        },
+                        "{label}"
+                    }
+                }
+            };
             rsx! {
             Card {
                 CardHeader {
@@ -51,22 +83,24 @@ fn MotionView() -> Element {
                     p { "{m.description}" }
                 }
                 CardFooter {
-                    button { onclick: move |_| motion.restart(), "not interested" }
-                    button { onclick: move |_| motion.restart(), "vote!" }
+                    {vote_button("Voor", "VOOR", client.clone())}
+                    {vote_button("Tegen", "TEGEN", client.clone())}
+                    {vote_button("Niet interessant", "NIET_INTERESSANT", client.clone())}
                 }
-            }
-        }
+
+                        }
+                    }
         } else {
             rsx! {
-            Card {
-                CardHeader {
-                    CardTitle { "Loading..." }
-                }
-                CardContent {
-                    p { "Fetching motion..." }
+                Card {
+                    CardHeader {
+                        CardTitle { "Loading..." }
+                    }
+                    CardContent {
+                        p { "Fetching motion..." }
+                    }
                 }
             }
-        }
         }
     });
 

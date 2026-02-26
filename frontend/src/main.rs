@@ -5,8 +5,7 @@ use dioxus::logger::tracing;
 use dioxus::prelude::*;
 use reqwest::Client;
 use reqwest::get;
-use shared::{AddUserVoteRequest, GET_NEXT_MOTIE, MotieDto, POST_USER_VOTE, VoteDto};
-const BASE_URL: &str = "http://127.0.0.1:3000";
+use shared::{AddUserVoteRequest, MotieDto, VoteDto, BASE_URL_BACKEND, GET_NEXT_MOTIE, POST_USER_VOTE};
 const USER_ID: &str = "dev-user";
 fn main() {
     dioxus::launch(App);
@@ -39,7 +38,7 @@ async fn send_vote(client: Client, motie_id: i32, vote_value: &str) {
     };
 
     client
-        .post(&format!("{}{}", BASE_URL, POST_USER_VOTE))
+        .post(&format!("{}{}", BASE_URL_BACKEND, POST_USER_VOTE))
         .json(&vote)
         .send()
         .await
@@ -50,7 +49,7 @@ async fn send_vote(client: Client, motie_id: i32, vote_value: &str) {
 fn MotionView() -> Element {
     let client = Client::new();
     let mut motion = use_resource(|| async move {
-        get(&format!("{}{}", BASE_URL, GET_NEXT_MOTIE))
+        get(&format!("{}{}", BASE_URL_BACKEND, GET_NEXT_MOTIE))
             .await
             .unwrap()
             .json::<MotieDto>()

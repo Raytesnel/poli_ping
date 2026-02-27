@@ -15,3 +15,8 @@ pub struct VoteDto {
     pub party: String,
     pub vote: String,
 }
+
+#[derive(Debug,Serialize,Deserialize)]
+pub struct NextMotieRequest {
+    pub user_id: String,
+}

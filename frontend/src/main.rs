@@ -4,7 +4,7 @@ use components::card::*;
 use dioxus::logger::tracing::{event, span, Level};
 use dioxus::prelude::*;
 use reqwest::Client;
-use shared::{AddUserVoteRequest, MotieDto, BASE_URL_BACKEND, GET_NEXT_MOTIE, POST_USER_VOTE};
+use shared::{AddUserVoteRequest, MotieDto, NextMotieRequest, BASE_URL_BACKEND, GET_NEXT_MOTIE, POST_USER_VOTE};
 
 const USER_ID: &str = "dev-user_2";
 fn main() {
@@ -126,11 +126,15 @@ async fn send_vote(client: Client, motie_id: i32, vote_value: &str) {
         .await;
 }
 
-// Modular fetch_motion (same as Step 1)
+// Modular fetch_motion
 async fn fetch_motion() -> Result<MotieDto, reqwest::Error> {
     event!(Level::INFO, "Fetching motion");
+    let json_request = NextMotieRequest {
+        user_id: USER_ID.to_string(),
+    };
     let resp = Client::new()
-        .get(&format!("http://{}{}", BASE_URL_BACKEND, GET_NEXT_MOTIE))
+        .post(&format!("http://{}{}", BASE_URL_BACKEND, GET_NEXT_MOTIE))
+        .json(&json_request)
         .send()
         .await?;
     let motion = resp.json::<MotieDto>().await?;

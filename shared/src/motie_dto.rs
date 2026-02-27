@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone,PartialEq)]
 pub struct MotieDto {
     pub id: i32,
     pub title: String,
@@ -10,7 +10,7 @@ pub struct MotieDto {
     pub votes: Vec<VoteDto>,
 }
 
-#[derive(Debug, Serialize,Deserialize,Clone)]
+#[derive(Debug, Serialize,Deserialize,Clone,PartialEq)]
 pub struct VoteDto {
     pub party: String,
     pub vote: String,

@@ -11,7 +11,7 @@ mod services;
 pub async fn open_sqlite_pool() -> SqlitePool {
     dotenvy::dotenv().ok();
 
-    let database_url = std::env::var("DATABASE_URL_INTERNAL")
+    let database_url = std::env::var("DATABASE_URL")
         .expect("DATABASE_URL must be set");
 
     println!("DATABASE_URL: {database_url}");

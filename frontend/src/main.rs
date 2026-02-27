@@ -1,13 +1,17 @@
 mod components;
 
 use components::card::*;
-use dioxus::logger::tracing;
+use dioxus::logger::tracing::{event, span, Level};
 use dioxus::prelude::*;
 use reqwest::Client;
-use reqwest::get;
-use shared::{AddUserVoteRequest, MotieDto, VoteDto, BASE_URL_BACKEND, GET_NEXT_MOTIE, POST_USER_VOTE};
-const USER_ID: &str = "dev-user";
+use shared::{AddUserVoteRequest, MotieDto, BASE_URL_BACKEND, GET_NEXT_MOTIE, POST_USER_VOTE};
+
+const USER_ID: &str = "dev-user_2";
 fn main() {
+    let root_span = span!(Level::INFO, "frontend_startup");
+    let _guard = root_span.enter();
+
+    event!(Level::INFO, "Launching Dioxus app");
     dioxus::launch(App);
 }
 static CSS: Asset = asset!("/assets/main.css");
@@ -15,7 +19,7 @@ static CSS: Asset = asset!("/assets/main.css");
 #[component]
 fn App() -> Element {
     rsx! {
-        document::Stylesheet { href: CSS }
+        Stylesheet { href: CSS }
         Title {}
         MotionView {}
     }
@@ -29,79 +33,107 @@ fn Title() -> Element {
         }
     }
 }
+#[component]
+fn MotionView() -> Element {
+    let client = use_signal(Client::new);
+    let motion_resource = use_resource(|| async { fetch_motion().await });
+    let client_handle = client.read().clone();
 
+    // helper function for voting
+    let vote_and_refresh = {
+        let motion_resource = motion_resource.clone(); // clone for closure
+        move |motie_id: i32, vote_value: &'static str| {
+            let client = client_handle.clone();
+            let mut motion_resource = motion_resource.clone(); // clone for async
+            spawn(async move {
+                send_vote(client, motie_id, vote_value).await;
+                println!("motie id {} sent vote", motie_id);
+                motion_resource.restart();
+            });
+        }
+    };
+
+    let content = motion_resource.value().with(|maybe_result| {
+        if let Some(result) = maybe_result {
+            match result {
+                Ok(motion) => {
+                    let motie_id = motion.id;
+                    rsx! {
+                        MotionCard {
+                            motion: motion.clone(),
+                            on_vote: move |vote_value| vote_and_refresh(motie_id, vote_value),
+                        }
+                    }
+                }
+                Err(_) => rsx!(div { "Failed to fetch motion." }),
+            }
+        } else {
+            rsx!(div { "Loading..." })
+        }
+    });
+
+    rsx!(div {id: "motion_view", {content} })
+}
+
+// Separate MotionCard component
+#[component]
+fn MotionCard(motion: MotieDto, on_vote: EventHandler<&'static str>) -> Element {
+    rsx! {
+        Card {
+            CardHeader {
+                CardTitle { "{motion.title}" }
+            }
+            CardContent {
+                p { "{motion.description}" }
+            }
+            CardFooter {
+                VoteButton { label: "Voor", value: "VOOR", on_vote }
+                VoteButton { label: "Tegen", value: "TEGEN", on_vote }
+                VoteButton { label: "Niet interessant", value: "NIET_INTERESSANT", on_vote }
+            }
+        }
+    }
+}
+
+// VoteButton component
+#[component]
+fn VoteButton(
+    label: &'static str,
+    value: &'static str,
+    on_vote: EventHandler<&'static str>,
+) -> Element {
+    rsx! {
+        button {
+            onclick: move |_| on_vote.call(value),
+            "{label}"
+        }
+    }
+}
+
+// Modular async function for sending vote
 async fn send_vote(client: Client, motie_id: i32, vote_value: &str) {
+    event!(Level::INFO, "Sending vote: {vote_value}");
     let vote = AddUserVoteRequest {
         user_id: USER_ID.to_string(),
         motie_id,
         vote: vote_value.to_string(),
     };
 
-    client
-        .post(&format!("{}{}", BASE_URL_BACKEND, POST_USER_VOTE))
+    let _ = client
+        .post(&format!("http://{}{}", BASE_URL_BACKEND, POST_USER_VOTE))
         .json(&vote)
         .send()
-        .await
-        .unwrap();
+        .await;
 }
 
-#[component]
-fn MotionView() -> Element {
-    let client = Client::new();
-    let mut motion = use_resource(|| async move {
-        get(&format!("{}{}", BASE_URL_BACKEND, GET_NEXT_MOTIE))
-            .await
-            .unwrap()
-            .json::<MotieDto>()
-            .await
-            .unwrap()
-    });
-    let content = motion.value().with(|opt| {
-        if let Some(m) = opt {
-            let motie_id = m.id;
-            let vote_button = |label: &str, vote_value: &'static str, client:Client| {
-                rsx! {
-                    button {
-                        onclick: move |_| {
-                            let value = client.clone();
-                            spawn(async move {
-                                send_vote(value, motie_id, vote_value).await;
-                                motion.restart();
-                            });
-                        },
-                        "{label}"
-                    }
-                }
-            };
-            rsx! {
-            Card {
-                CardHeader {
-                    CardTitle { "{m.title}" }
-                }
-                CardContent {
-                    p { "{m.description}" }
-                }
-                CardFooter {
-                    {vote_button("Voor", "VOOR", client.clone())}
-                    {vote_button("Tegen", "TEGEN", client.clone())}
-                    {vote_button("Niet interessant", "NIET_INTERESSANT", client.clone())}
-                }
-
-                        }
-                    }
-        } else {
-            rsx! {
-                Card {
-                    CardHeader {
-                        CardTitle { "Loading..." }
-                    }
-                    CardContent {
-                        p { "Fetching motion..." }
-                    }
-                }
-            }
-        }
-    });
-
-    rsx! { div { id: "motion_view",{content}} }
+// Modular fetch_motion (same as Step 1)
+async fn fetch_motion() -> Result<MotieDto, reqwest::Error> {
+    event!(Level::INFO, "Fetching motion");
+    let resp = Client::new()
+        .get(&format!("http://{}{}", BASE_URL_BACKEND, GET_NEXT_MOTIE))
+        .send()
+        .await?;
+    let motion = resp.json::<MotieDto>().await?;
+    event!(Level::DEBUG, "motion: {:?}", motion);
+    Ok(motion)
 }

@@ -1,7 +1,6 @@
-use sqlx::{SqlitePool};
-use crate::models::db_models::{Motie, PartyVote};
-use shared::MotieDto;
 use crate::models::api_models::MotieTransformed;
+use crate::models::db_models::{Motie, PartyVote};
+use sqlx::SqlitePool;
 
 pub async fn get_next_unseen_motie(
     pool: &SqlitePool,
@@ -15,15 +14,15 @@ pub async fn get_next_unseen_motie(
         WHERE id NOT IN (
             SELECT motie_id
             FROM user_votes
-            WHERE user_id = $1
+            WHERE user_id = ?
         )
         ORDER BY id
         LIMIT 1
         "#,
         user_id
     )
-        .fetch_optional(pool)
-        .await
+    .fetch_optional(pool)
+    .await
 }
 
 pub async fn get_party_votes(
@@ -35,42 +34,40 @@ pub async fn get_party_votes(
         r#"
         SELECT id,motie_id,party, vote
         FROM party_votes
-        WHERE motie_id = $1
+        WHERE motie_id = ?
         "#,
         motie_id
     )
-        .fetch_all(pool)
-        .await
+    .fetch_all(pool)
+    .await
 }
 
-
-pub async fn insert_motie(
-    pool: &SqlitePool,
-    motie: &MotieTransformed,
-) -> Result<i64, sqlx::Error> {
+pub async fn insert_motie(pool: &SqlitePool, motie: &MotieTransformed) -> Result<i64, sqlx::Error> {
     sqlx::query!(
         r#"
-        INSERT OR IGNORE INTO moties
-        (external_id, title, description, result, timestamp)
-        VALUES (?, ?, ?, ?, ?)
-        "#,
+    INSERT INTO moties
+    (external_id, title, description, result, timestamp)
+    VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(external_id) DO UPDATE SET external_id=excluded.external_id
+    RETURNING id
+    "#,
         motie.external_id,
         motie.title,
         motie.description,
         motie.result,
         motie.timestamp,
     )
-        .execute(pool)
-        .await?;
+    .fetch_one(pool)
+    .await?;
 
     let record = sqlx::query!(
         r#"
         SELECT id FROM moties WHERE external_id = ?
         "#,
-        motie.external_id
+        &motie.external_id
     )
-        .fetch_one(pool)
-        .await?;
+    .fetch_one(pool)
+    .await?;
 
     Ok(record.id.expect("REASON"))
 }
@@ -87,12 +84,12 @@ pub async fn insert_party_vote(
         (motie_id, party, vote)
         VALUES (?, ?, ?)
         "#,
-        motie_id,
+        motie_id as i32,
         party,
         vote
     )
-        .execute(pool)
-        .await?;
+    .execute(pool)
+    .await?;
 
     Ok(())
 }

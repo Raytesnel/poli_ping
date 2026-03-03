@@ -4,7 +4,7 @@ use components::card::*;
 use dioxus::logger::tracing::{event, span, Level};
 use dioxus::prelude::*;
 use reqwest::Client;
-use shared::{AddUserVoteRequest, MotieDto, NextMotieRequest, BASE_URL_BACKEND, GET_NEXT_MOTIE, POST_USER_VOTE};
+use shared::{AddUserVoteRequest, MotieDto, MotieProgressDto, UserIdRequest, BASE_URL_BACKEND, GET_MOTIE_PROGRESS, GET_NEXT_MOTIE, POST_USER_VOTE};
 
 const USER_ID: &str = "dev-user_2";
 fn main() {
@@ -37,51 +37,64 @@ fn Title() -> Element {
 fn MotionView() -> Element {
     let client = use_signal(Client::new);
     let motion_resource = use_resource(|| async { fetch_motion().await });
+    let progress_state = use_resource(|| async { fetch_motie_progress().await });
     let client_handle = client.read().clone();
 
     // helper function for voting
     let vote_and_refresh = {
         let motion_resource = motion_resource.clone(); // clone for closure
+        let progress_state = progress_state.clone(); // clone for closure
         move |motie_id: i32, vote_value: &'static str| {
             let client = client_handle.clone();
             let mut motion_resource = motion_resource.clone(); // clone for async
+            let mut progress_state = progress_state.clone(); // clone for async
             spawn(async move {
                 send_vote(client, motie_id, vote_value).await;
                 println!("motie id {} sent vote", motie_id);
                 motion_resource.restart();
+                progress_state.restart();
             });
         }
     };
-
-    let content = motion_resource.value().with(|maybe_result| {
-        if let Some(result) = maybe_result {
-            match result {
-                Ok(motion) => {
+    let content = motion_resource.value().with(|maybe_motion| {
+        progress_state.value().with(|maybe_progress| {
+            match (maybe_motion, maybe_progress) {
+                (Some(Ok(motion)), Some(Ok(progress))) => {
                     let motie_id = motion.id;
                     rsx! {
-                        MotionCard {
-                            motion: motion.clone(),
-                            on_vote: move |vote_value| vote_and_refresh(motie_id, vote_value),
-                        }
+                    MotionCard {
+                        motion: motion.clone(),
+                        progress: progress.clone(),
+                        on_vote: move |vote_value| vote_and_refresh(motie_id, vote_value),
                     }
                 }
-                Err(_) => rsx!(div { "Failed to fetch motion." }),
-            }
-        } else {
-            rsx!(div { "Loading..." })
-        }
-    });
+                }
 
+                (Some(Err(e)), _) => {
+                    event!(Level::ERROR,"Motion error: {:?}", e);
+                    rsx!(div { "Failed to fetch motion." })
+                }
+
+                (_, Some(Err(e))) => {
+                    event!(Level::ERROR,"Progress error: {:?}", e);
+                    rsx!(div { "Failed to fetch progress." })
+                }
+
+                _ => rsx!(div { "Loading..." }),
+            }
+        })
+    });
     rsx!(div {id: "motion_view", {content} })
 }
 
 // Separate MotionCard component
 #[component]
-fn MotionCard(motion: MotieDto, on_vote: EventHandler<&'static str>) -> Element {
+fn MotionCard(motion: MotieDto, on_vote: EventHandler<&'static str>,progress:MotieProgressDto) -> Element {
     rsx! {
         Card {
             CardHeader {
                 CardTitle { "{motion.title}" }
+                p { "{progress.voted}/{progress.total} voted" }
             }
             CardContent {
                 p { "{motion.description}" }
@@ -129,7 +142,7 @@ async fn send_vote(client: Client, motie_id: i32, vote_value: &str) {
 // Modular fetch_motion
 async fn fetch_motion() -> Result<MotieDto, reqwest::Error> {
     event!(Level::INFO, "Fetching motion");
-    let json_request = NextMotieRequest {
+    let json_request = UserIdRequest {
         user_id: USER_ID.to_string(),
     };
     let resp = Client::new()
@@ -140,4 +153,18 @@ async fn fetch_motion() -> Result<MotieDto, reqwest::Error> {
     let motion = resp.json::<MotieDto>().await?;
     event!(Level::DEBUG, "motion: {:?}", motion);
     Ok(motion)
+}
+
+async fn fetch_motie_progress() -> Result<MotieProgressDto, reqwest::Error> {
+    let req = UserIdRequest {
+        user_id: USER_ID.to_string(),
+    };
+    let resp = Client::new()
+        .post(&format!("http://{}{}", BASE_URL_BACKEND, GET_MOTIE_PROGRESS))
+        .json(&req)
+        .send()
+        .await?;
+    let progress = resp.json::<MotieProgressDto>().await?;
+    event!(Level::DEBUG, "progression: {:?}", progress);
+    Ok(progress)
 }

@@ -4,7 +4,7 @@ use sqlx::SqlitePool;
 use crate::repository::motie;
 
 use crate::models::api_models::{ApiResponse, MotieTransformed};
-use shared::{MotieDto, VoteDto};
+use shared::{MotieDto, MotieProgressDto, VoteDto};
 
 
 
@@ -124,5 +124,24 @@ pub async fn get_next_motie(pool: &SqlitePool, user_id: &str) -> Result<MotieDto
                 vote: v.vote,
             })
             .collect(),
+    })
+}
+
+pub async fn get_user_motie_progress(
+    pool: &SqlitePool,
+    user_id: &str,
+) -> Result<MotieProgressDto, sqlx::Error> {
+    let voted: (i32,) = sqlx::query_as("SELECT COUNT(*) FROM user_votes WHERE user_id = ?")
+        .bind(user_id)
+        .fetch_one(pool)
+        .await?;
+
+    let total: (i32,) = sqlx::query_as("SELECT COUNT(*) FROM moties")
+        .fetch_one(pool)
+        .await?;
+
+    Ok(MotieProgressDto {
+        voted: voted.0,
+        total: total.0,
     })
 }

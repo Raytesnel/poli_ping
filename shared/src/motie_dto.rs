@@ -17,6 +17,12 @@ pub struct VoteDto {
 }
 
 #[derive(Debug,Serialize,Deserialize)]
-pub struct NextMotieRequest {
+pub struct UserIdRequest {
     pub user_id: String,
+}
+
+#[derive(Debug, Serialize,Deserialize, Clone, PartialEq)]
+pub struct MotieProgressDto {
+    pub voted: i32,
+    pub total: i32,
 }

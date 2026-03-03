@@ -33,6 +33,15 @@ fn Title() -> Element {
         }
     }
 }
+
+/// Component that renders the current motion (motie) and its voting progress.
+///
+/// This component fetches both the next unseen motion for the user and
+/// the voting progress (how many motions the user has already voted on).
+///
+/// While loading, it shows a "Loading..." message. On error, it logs it and
+/// displays a relevant message. Once both motion and progress are available,
+/// it displays a `MotionCard` with the motion details and vote buttons.
 #[component]
 fn MotionView() -> Element {
     let client = use_signal(Client::new);
@@ -87,7 +96,13 @@ fn MotionView() -> Element {
     rsx!(div {id: "motion_view", {content} })
 }
 
-// Separate MotionCard component
+/// Card component that displays a motion with title, description,
+/// voting buttons, and current voting progress.
+///
+/// # Props
+/// - `motion`: The motion data (`MotieDto`) to display.
+/// - `progress`: The voting progress for the user (`MotieProgressDto`).
+/// - `on_vote`: Callback to trigger when the user votes.
 #[component]
 fn MotionCard(motion: MotieDto, on_vote: EventHandler<&'static str>,progress:MotieProgressDto) -> Element {
     rsx! {
@@ -108,7 +123,12 @@ fn MotionCard(motion: MotieDto, on_vote: EventHandler<&'static str>,progress:Mot
     }
 }
 
-// VoteButton component
+/// Card component that creates a vote button,
+///
+/// # Props
+/// - `label`: The text to display on the button ('voor', 'tegen', 'niet interesant').
+/// - `value`: The value to save ('voor', 'tegen', 'niet interesant').
+/// - `on_vote`: Callback to trigger when the user votes.
 #[component]
 fn VoteButton(
     label: &'static str,
@@ -123,7 +143,10 @@ fn VoteButton(
     }
 }
 
-// Modular async function for sending vote
+/// Send a vote for a given motion.
+///
+/// Posts a vote to the backend using the `Client`.
+/// Logs the event with tracing.
 async fn send_vote(client: Client, motie_id: i32, vote_value: &str) {
     event!(Level::INFO, "Sending vote: {vote_value}");
     let vote = AddUserVoteRequest {
@@ -139,7 +162,13 @@ async fn send_vote(client: Client, motie_id: i32, vote_value: &str) {
         .await;
 }
 
-// Modular fetch_motion
+/// Fetch the next unseen motion for the current user.
+///
+/// Sends a POST request to the backend with the `USER_ID` and returns
+/// a `MotieDto` if available.
+///
+/// # Errors
+/// Returns a `reqwest::Error` if the HTTP request or JSON deserialization fails.
 async fn fetch_motion() -> Result<MotieDto, reqwest::Error> {
     event!(Level::INFO, "Fetching motion");
     let json_request = UserIdRequest {
@@ -155,6 +184,12 @@ async fn fetch_motion() -> Result<MotieDto, reqwest::Error> {
     Ok(motion)
 }
 
+/// Fetch the current user's progress (how many motions voted).
+///
+/// Sends a POST request to the backend and returns a `MotieProgressDto`.
+///
+/// # Errors
+/// Returns a `reqwest::Error` if the request or JSON deserialization fails.
 async fn fetch_motie_progress() -> Result<MotieProgressDto, reqwest::Error> {
     let req = UserIdRequest {
         user_id: USER_ID.to_string(),

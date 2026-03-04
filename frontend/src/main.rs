@@ -1,12 +1,16 @@
 mod components;
 
 use components::card::*;
-use dioxus::logger::tracing::{event, span, Level};
+use components::progress::*;
+use dioxus::logger::tracing::{Level, event, span};
 use dioxus::prelude::*;
 use reqwest::Client;
-use shared::{AddUserVoteRequest, MotieDto, MotieProgressDto, UserIdRequest, BASE_URL_BACKEND, GET_MOTIE_PROGRESS, GET_NEXT_MOTIE, POST_USER_VOTE};
+use shared::{
+    AddUserVoteRequest, BASE_URL_BACKEND, GET_MOTIE_PROGRESS, GET_NEXT_MOTIE, MotieDto,
+    MotieProgressDto, POST_USER_VOTE, UserIdRequest,
+};
 
-const USER_ID: &str = "dev-user_2";
+const USER_ID: &str = "Lavinia";
 fn main() {
     let root_span = span!(Level::INFO, "frontend_startup");
     let _guard = root_span.enter();
@@ -76,6 +80,14 @@ fn MotionView() -> Element {
                         progress: progress.clone(),
                         on_vote: move |vote_value| vote_and_refresh(motie_id, vote_value),
                     }
+        Progress {
+            value: progress.clone().voted as f64,
+            max: progress.clone().total,
+            style: "background: #eee;",
+            ProgressIndicator {
+                style: "background: blue; transition: width 0.3s ease;"
+            }
+        }
                 }
                 }
 
@@ -104,12 +116,16 @@ fn MotionView() -> Element {
 /// - `progress`: The voting progress for the user (`MotieProgressDto`).
 /// - `on_vote`: Callback to trigger when the user votes.
 #[component]
-fn MotionCard(motion: MotieDto, on_vote: EventHandler<&'static str>,progress:MotieProgressDto) -> Element {
+fn MotionCard(
+    motion: MotieDto,
+    on_vote: EventHandler<&'static str>,
+    progress: MotieProgressDto,
+) -> Element {
     rsx! {
         Card {
             CardHeader {
                 CardTitle { "{motion.title}" }
-                p { "{progress.voted}/{progress.total} voted" }
+                p { "{progress.total-progress.voted} left" }
             }
             CardContent {
                 p { "{motion.description}" }
@@ -195,7 +211,10 @@ async fn fetch_motie_progress() -> Result<MotieProgressDto, reqwest::Error> {
         user_id: USER_ID.to_string(),
     };
     let resp = Client::new()
-        .post(&format!("http://{}{}", BASE_URL_BACKEND, GET_MOTIE_PROGRESS))
+        .post(&format!(
+            "http://{}{}",
+            BASE_URL_BACKEND, GET_MOTIE_PROGRESS
+        ))
         .json(&req)
         .send()
         .await?;

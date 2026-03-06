@@ -1,7 +1,7 @@
 .card {
     width: 100%;
     max-width: 420px; /* mobile width */
-    background: #9f7dbc;
+    background: var(--primary-color-2);
     border-radius: 16px;
     padding: 1.5rem;
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
@@ -63,16 +63,19 @@
     font-weight: 600;
     cursor: pointer;
     transition: 0.2s ease;
+    color: var(--text-color);
 }
 
-.card-footer button:first-child {
-    background-color: #6a6464;
-    color: white;
+.vote-yes {
+    background-color: var(--secondary-color-1);
 }
 
-.card-footer button:last-child {
-    background-color: #3d8e3e;
-    color: white;
+.vote-no {
+    background-color: var(--secondary-color-3);
+}
+
+.vote-skip {
+    background-color: var(--secondary-color-2);
 }
 
 .card-footer button:hover {

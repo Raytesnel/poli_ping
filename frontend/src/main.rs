@@ -22,10 +22,12 @@ static CSS: Asset = asset!("/assets/main.css");
 
 #[component]
 fn App() -> Element {
+    let progress_state = use_resource(|| async { fetch_motie_progress().await });
     rsx! {
         Stylesheet { href: CSS }
         Title {}
-        MotionView {}
+        MotionView {progress_state}
+        ProgressComponent{progress_state}
     }
 }
 
@@ -38,6 +40,38 @@ fn Title() -> Element {
     }
 }
 
+
+#[component]
+fn ProgressComponent(progress_state: Resource<Result<MotieProgressDto, reqwest::Error>>) -> Element {
+
+    let value = progress_state.read();
+    let Some(result) = value.as_ref() else {
+        return rsx!(div { "Loading..." });
+    };
+
+    let progress = match result {
+        Ok(p) => p,
+        Err(e) => {
+            event!(Level::ERROR, "Progress error: {:?}", e);
+            return rsx!(div { "Failed to fetch progress." });
+        }
+    };
+
+    let left = progress.total - progress.voted;
+
+    rsx! {
+        div { id:"progress",
+            p { "{left} left" }
+
+            Progress {
+                value: progress.voted as f64,
+                max: progress.total as f64,
+                ProgressIndicator {
+                }
+            }
+        }
+    }
+}
 /// Component that renders the current motion (motie) and its voting progress.
 ///
 /// This component fetches both the next unseen motion for the user and
@@ -47,10 +81,9 @@ fn Title() -> Element {
 /// displays a relevant message. Once both motion and progress are available,
 /// it displays a `MotionCard` with the motion details and vote buttons.
 #[component]
-fn MotionView() -> Element {
+fn MotionView(progress_state: Resource<Result<MotieProgressDto, reqwest::Error>>) -> Element {
     let client = use_signal(Client::new);
     let motion_resource = use_resource(|| async { fetch_motion().await });
-    let progress_state = use_resource(|| async { fetch_motie_progress().await });
     let client_handle = client.read().clone();
 
     // helper function for voting
@@ -77,17 +110,8 @@ fn MotionView() -> Element {
                     rsx! {
                     MotionCard {
                         motion: motion.clone(),
-                        progress: progress.clone(),
                         on_vote: move |vote_value| vote_and_refresh(motie_id, vote_value),
                     }
-        Progress {
-            value: progress.clone().voted as f64,
-            max: progress.clone().total,
-            style: "background: #eee;",
-            ProgressIndicator {
-                style: "background: blue; transition: width 0.3s ease;"
-            }
-        }
                 }
                 }
 
@@ -119,21 +143,19 @@ fn MotionView() -> Element {
 fn MotionCard(
     motion: MotieDto,
     on_vote: EventHandler<&'static str>,
-    progress: MotieProgressDto,
 ) -> Element {
     rsx! {
         Card {
             CardHeader {
                 CardTitle { "{motion.title}" }
-                p { "{progress.total-progress.voted} left" }
             }
             CardContent {
                 p { "{motion.description}" }
             }
             CardFooter {
-                VoteButton { label: "Voor", value: "VOOR", on_vote }
-                VoteButton { label: "Tegen", value: "TEGEN", on_vote }
-                VoteButton { label: "Niet interessant", value: "NIET_INTERESSANT", on_vote }
+                VoteButton { label: "Voor", value: "VOOR", class: "vote-yes",on_vote }
+                VoteButton { label: "Tegen", value: "TEGEN", class: "vote-no",on_vote }
+                VoteButton { label: "Niet interessant", value: "NIET_INTERESSANT",class: "vote-skip", on_vote }
             }
         }
     }
@@ -149,10 +171,12 @@ fn MotionCard(
 fn VoteButton(
     label: &'static str,
     value: &'static str,
+    class: &'static str,
     on_vote: EventHandler<&'static str>,
 ) -> Element {
     rsx! {
         button {
+            class: "{class}",
             onclick: move |_| on_vote.call(value),
             "{label}"
         }

@@ -1,10 +1,26 @@
 /* App-wide styling */
+:root {
+    --primary-color-1: #360568;
+    --primary-color-2: #8F87C0;
+    --primary-color-5: #3a3a3a;
+
+    --secondary-color-1: #BED45E;
+    --secondary-color-2: #7785AC;
+    --secondary-color-3: #E71D36;
+    --secondary-color-4: #3a3a3a;
+    --secondary-color-5: #3a3a3a;
+
+    --text-color: #ffffff;
+
+    --progress-value: 0%;
+}
+
 html, body {
     margin: 0;
     height: 100%;
-    background-color: #615c5c;
+    background-color: var(--primary-color-5);
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    color: white;
+    color: var(--text-color);
 }
 
 body {
@@ -18,6 +34,12 @@ body {
     height: 100%;
     justify-content: space-between;
 }
+#progress{
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    align-items: center;
+}
 
 #motion_view {
     flex: 1;
@@ -30,82 +52,5 @@ body {
 #title {
     text-align: center;
     padding: 1rem 0;
-    border-bottom: 1px solid #777;
+    border-bottom: 1px solid var(--text-color);
 }
-
-#title a {
-    text-decoration: none;
-    color: white;
-}
-
-#title span {
-    width: 20px;
-}
-
-#title h1 {
-    margin: 0.25em;
-    font-style: italic;
-}
-
-#buttons {
-    display: flex;
-    flex-direction: row;
-    justify-content: center;
-    gap: 20px;
-    /* padding-top: 20px; */
-    padding-bottom: 20px;
-}
-
-#skip {
-    background-color: #333131
-}
-
-#save {
-    background-color: #2a5521;
-}
-
-#skip, #save {
-    padding: 5px 30px 5px 30px;
-    border-radius: 3px;
-    font-size: 2rem;
-    font-weight: bold;
-    color: rgb(230, 230, 230)
-}
-
-#navbar {
-    border: 1px solid rgb(233, 233, 233);
-    display: flex;
-    flex-direction: row;
-    justify-content: space-evenly;
-    padding: 20px;
-    gap: 20px;
-}
-
-#navbar a {
-    background-color: #a8a8a8;
-    border-radius: 5px;
-    border: 1px solid black;
-    text-decoration: none;
-    color: black;
-    padding: 10px 30px 10px 30px;
-}
-
-#favorites {
-    flex-grow: 1;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    padding: 10px;
-}
-
-#favorites-container {
-    overflow-y: auto;
-    overflow-x: hidden;
-    display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 10px;
-    padding: 10px;
-}
-

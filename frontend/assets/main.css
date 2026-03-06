@@ -1,6 +1,30 @@
 /* App-wide styling */
+html[data-theme="dark"] {
+    --dark: initial;
+    --light: ;
+}
+
+html[data-theme="light"] {
+    --dark: ;
+    --light: initial;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --dark: initial;
+        --light: ;
+    }
+}
+
+@media (prefers-color-scheme: light) {
+    :root {
+        --dark: ;
+        --light: initial;
+    }
+}
+
 :root {
-    --primary-color-1: #360568;
+    --primary-color-1: var(--dark #360568);
     --primary-color-2: #8F87C0;
     --primary-color-5: #3a3a3a;
 
@@ -9,11 +33,27 @@
     --secondary-color-3: #E71D36;
     --secondary-color-4: #3a3a3a;
     --secondary-color-5: #3a3a3a;
-
     --text-color: #ffffff;
-
     --progress-value: 0%;
 }
+/* Modern browsers with `scrollbar-*` support */
+@supports (scrollbar-width: auto) {
+    :not(:hover) {
+        scrollbar-color: rgb(0 0 0 / 0%) rgb(0 0 0 / 0%);
+    }
+
+    :hover {
+        scrollbar-color: var(--secondary-color-2) rgb(0 0 0 / 0%);
+    }
+}
+
+/* Legacy browsers with `::-webkit-scrollbar-*` support */
+@supports selector(::-webkit-scrollbar) {
+    :root::-webkit-scrollbar-track {
+        background: transparent;
+    }
+}
+
 
 html, body {
     margin: 0;

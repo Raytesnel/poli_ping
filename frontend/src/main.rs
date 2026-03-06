@@ -10,7 +10,7 @@ use shared::{
     MotieProgressDto, POST_USER_VOTE, UserIdRequest,
 };
 
-const USER_ID: &str = "Lavinia";
+const USER_ID: &str = "Raymond";
 fn main() {
     let root_span = span!(Level::INFO, "frontend_startup");
     let _guard = root_span.enter();
@@ -147,10 +147,10 @@ fn MotionCard(
     rsx! {
         Card {
             CardHeader {
-                CardTitle { "{motion.title}" }
+                CardTitle { "{motion.description}" }
             }
             CardContent {
-                p { "{motion.description}" }
+                p { "{motion.title}" }
             }
             CardFooter {
                 VoteButton { label: "Voor", value: "VOOR", class: "vote-yes",on_vote }

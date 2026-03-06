@@ -1,5 +1,6 @@
 use crate::models::api_models::MotieTransformed;
 use crate::models::db_models::{Motie, PartyVote};
+use sqlx::{QueryBuilder, Row, Sqlite};
 use sqlx::SqlitePool;
 
 pub async fn get_next_unseen_motie(
@@ -92,4 +93,37 @@ pub async fn insert_party_vote(
     .await?;
 
     Ok(())
+}
+
+
+pub async fn existing_ids(
+    pool: &SqlitePool,
+    ids: &[String],
+) -> Result<Vec<String>, sqlx::Error> {
+
+    if ids.is_empty() {
+        return Ok(vec![]);
+    }
+
+    let mut qb = QueryBuilder::<Sqlite>::new(
+        "SELECT external_id FROM moties WHERE external_id IN ("
+    );
+
+    let mut separated = qb.separated(",");
+
+    for id in ids {
+        separated.push_bind(id);
+    }
+
+    qb.push(")");
+
+    let rows = qb
+        .build()
+        .fetch_all(pool)
+        .await?;
+
+    Ok(rows
+        .into_iter()
+        .map(|row| row.get::<String, _>("external_id"))
+        .collect())
 }

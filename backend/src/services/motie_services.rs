@@ -5,6 +5,8 @@ use crate::repository::motie;
 
 use crate::models::api_models::{ApiResponse, MotieTransformed};
 use shared::{MotieDto, MotieProgressDto, VoteDto};
+use crate::repository::motie::{existing_ids};
+use crate::services::llm::convert_with_llm;
 
 
 
@@ -86,8 +88,29 @@ pub async fn sync_latest_moties(
 ) -> Result<(), anyhow::Error> {
     let api_response = fetch_moties_from_api(&max_number).await?;
     let transformed = transform_moties(api_response).await?;
+    let ids: Vec<String> = transformed.iter()
+        .map(|m| m.external_id.clone())
+        .collect();
 
-    for motie in transformed {
+    let existing_id_list = existing_ids(pool, &ids).await?;
+    let existing: std::collections::HashSet<_> = existing_id_list.into_iter().collect();
+
+    let new_moties: Vec<_> = transformed
+        .into_iter()
+        .filter(|m| !existing.contains(&m.external_id))
+        .collect();
+
+    for mut motie in new_moties {
+        let llm_response = convert_with_llm(&motie).await;
+        motie = MotieTransformed{
+            external_id:motie.external_id,
+            title:llm_response.titel_kort,
+            result: motie.result,
+            description: llm_response.beschrijving,
+            votes: motie.votes,
+            timestamp: motie.timestamp.clone(),
+
+        };
         let motie_id = motie::insert_motie(pool, &motie).await?;
 
         for vote in &motie.votes {

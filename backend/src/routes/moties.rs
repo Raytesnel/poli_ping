@@ -1,13 +1,14 @@
 use crate::app::AppState;
 use crate::models;
-use crate::services::motie_services;
-use axum::{extract::Query, extract::State, http::StatusCode, routing::get, routing::post, Json, Router};
-use shared::{MotieDto, MotieProgressDto, UserIdRequest, GET_MOTIE_PROGRESS};
-use shared::{GET_MOTIES, GET_NEXT_MOTIE};
 use crate::models::api_models::MotieTransformed;
+use crate::services::motie_services;
+use axum::{
+    Json, Router, extract::Query, extract::State, http::StatusCode, routing::get, routing::post,
+};
+use shared::{GET_MOTIE_PROGRESS, MotieDto, MotieProgressDto, UserIdRequest};
+use shared::{GET_MOTIES, GET_NEXT_MOTIE};
 
-
-pub fn routes() -> Router<AppState>  {
+pub fn routes() -> Router<AppState> {
     Router::new()
         .route(GET_MOTIES, get(get_moties))
         .route(GET_NEXT_MOTIE, post(get_nex_user_motie))
@@ -17,12 +18,14 @@ pub fn routes() -> Router<AppState>  {
 async fn get_moties(
     Query(motion_param): Query<models::api_models::GetMotiesQuery>,
 ) -> Result<Json<Vec<MotieTransformed>>, StatusCode> {
-    let max_number = motion_param.max_number.unwrap_or(100);
+    let max_number = motion_param.max_number.unwrap_or(10);
     motie_services::get_moties(&max_number).await
 }
 
-
-async fn get_nex_user_motie(State(state): State<AppState>, Json(req): Json<UserIdRequest>,) -> Result<Json<MotieDto>, StatusCode> {
+async fn get_nex_user_motie(
+    State(state): State<AppState>,
+    Json(req): Json<UserIdRequest>,
+) -> Result<Json<MotieDto>, StatusCode> {
     let motie = motie_services::get_next_motie(&state.pool, &req.user_id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;

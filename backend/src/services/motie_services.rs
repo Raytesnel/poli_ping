@@ -1,18 +1,18 @@
+use crate::repository::motie;
 use axum::{http::StatusCode, Json};
+use chrono::Local;
 use reqwest::Client;
 use sqlx::SqlitePool;
-use crate::repository::motie;
 
 use crate::models::api_models::{ApiResponse, MotieTransformed};
-use shared::{MotieDto, MotieProgressDto, VoteDto};
-use crate::repository::motie::{existing_ids};
+use crate::repository::motie::existing_ids;
 use crate::services::llm::convert_with_llm;
+use shared::{MotieDto, MotieProgressDto, VoteDto};
 
 
+pub async fn get_moties() -> Result<Json<Vec<MotieTransformed>>, StatusCode> {
 
-pub async fn get_moties(max_number: &u16) -> Result<Json<Vec<MotieTransformed>>, StatusCode> {
-
-    let moties = fetch_moties_from_api(max_number)
+    let moties = fetch_moties_from_api()
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -23,11 +23,13 @@ pub async fn get_moties(max_number: &u16) -> Result<Json<Vec<MotieTransformed>>,
     Ok(Json(result))
 }
 
-async fn fetch_moties_from_api(max_number: &u16) -> Result<ApiResponse, anyhow::Error> {
+async fn fetch_moties_from_api() -> Result<ApiResponse, anyhow::Error> {
+    let date = Local::now().format("%Y-%m-%d").to_string();
     let url = format!(
-        "https://gegevensmagazijn.tweedekamer.nl/OData/v4/2.0/Zaak?$filter=verwijderd%20eq%20false%20and%20Soort%20eq%20'Motie'&$orderby=GewijzigdOp%20desc&$top={}&$expand=Besluit($expand=Stemming($expand=Fractie))",
-        max_number
+        "https://gegevensmagazijn.tweedekamer.nl/OData/v4/2.0/Zaak?$filter=Verwijderd%20eq%20false%20and%20Soort%20eq%20'Motie'and%20ApiGewijzigdOp%20gt {}&$orderby=GewijzigdOp%20desc&$expand=Besluit($expand=Stemming($expand=Fractie)),Document",
+        date
     );
+    println!("Fetching moties from api: {}", url);
     let client = Client::new();
 
     let json: ApiResponse = client
@@ -38,7 +40,9 @@ async fn fetch_moties_from_api(max_number: &u16) -> Result<ApiResponse, anyhow::
         .json()
         .await?;
 
-    Ok(json)
+    Ok({
+        println!("Done fetching moties from api");
+        json })
 }
 
 async fn transform_moties(moties: ApiResponse) -> Result<Vec<MotieTransformed>, anyhow::Error> {
@@ -84,9 +88,8 @@ async fn transform_moties(moties: ApiResponse) -> Result<Vec<MotieTransformed>, 
 
 pub async fn sync_latest_moties(
     pool: &SqlitePool,
-    max_number: u16,
 ) -> Result<(), anyhow::Error> {
-    let api_response = fetch_moties_from_api(&max_number).await?;
+    let api_response = fetch_moties_from_api().await?;
     let transformed = transform_moties(api_response).await?;
     let ids: Vec<String> = transformed.iter()
         .map(|m| m.external_id.clone())

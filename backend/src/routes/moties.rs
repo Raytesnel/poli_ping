@@ -16,10 +16,8 @@ pub fn routes() -> Router<AppState> {
 }
 
 async fn get_moties(
-    Query(motion_param): Query<models::api_models::GetMotiesQuery>,
 ) -> Result<Json<Vec<MotieTransformed>>, StatusCode> {
-    let max_number = motion_param.max_number.unwrap_or(10);
-    motie_services::get_moties(&max_number).await
+    motie_services::get_moties().await
 }
 
 async fn get_nex_user_motie(

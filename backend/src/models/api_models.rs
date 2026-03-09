@@ -1,11 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-
-#[derive(Debug, Deserialize)]
-pub struct GetMotiesQuery {
-    pub max_number: Option<u16>, // optional, default if not provided
-}
-
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ApiResponse {
     pub value: Vec<Zaak>,
@@ -36,9 +30,15 @@ pub struct Zaak {
     verwijderd: bool,
     kabinetsappreciatie: Option<String>,
     pub besluit: Vec<Besluit>,
+    pub document: Vec<Document>,
+
 }
 
-
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct Document {
+    pub id: String,
+}
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Besluit {

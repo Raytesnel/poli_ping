@@ -40,7 +40,7 @@ async fn main() {
 
     let pool = open_sqlite_pool()
         .await;
-    motie_services::sync_latest_moties(&pool, 200)
+    motie_services::sync_latest_moties(&pool)
         .await
         .expect("Failed to sync moties");
 

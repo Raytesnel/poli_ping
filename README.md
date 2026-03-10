@@ -28,8 +28,6 @@ cp .env.example .env
 
 sqlx database create
 sqlx migrate run
-
-cargo run
 ```
 ### run backend
 ```shell
@@ -38,7 +36,6 @@ cargo run -p backend
 
 ### run frontend
 ```shell
-cd frontend
-dx serve --web
+dx serve --web --package frontend
 ```
 

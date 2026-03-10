@@ -1,7 +1,6 @@
 use crate::services::motie_services;
 use sqlx::SqlitePool;
-use tracing::{debug, error, info, warn};
-use tracing_subscriber::EnvFilter;
+use tracing::{debug, info};
 
 mod app;
 mod models;

@@ -1,11 +1,10 @@
 use crate::app::AppState;
-use crate::models;
 use crate::models::api_models::MotieTransformed;
 use crate::services::motie_services;
 use axum::{
-    Json, Router, extract::Query, extract::State, http::StatusCode, routing::get, routing::post,
+    extract::State, http::StatusCode, routing::get, routing::post, Json, Router,
 };
-use shared::{GET_MOTIE_PROGRESS, MotieDto, MotieProgressDto, UserIdRequest};
+use shared::{MotieDto, MotieProgressDto, UserIdRequest, GET_MOTIE_PROGRESS};
 use shared::{GET_MOTIES, GET_NEXT_MOTIE};
 
 pub fn routes() -> Router<AppState> {

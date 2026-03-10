@@ -7,8 +7,7 @@ use crate::models::api_models::{ApiResponse, MotieTransformed};
 use crate::repository::motie::existing_ids;
 use crate::services::llm::convert_with_llm;
 use shared::{MotieDocumentDto, MotieDto, MotieProgressDto, VoteDto};
-use crate::models::db_models::MotieDocument;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info};
 
 pub async fn get_moties() -> Result<Json<Vec<MotieTransformed>>, StatusCode> {
 

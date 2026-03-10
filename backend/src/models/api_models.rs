@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use crate::models::db_models::MotieDocument;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ApiResponse {
@@ -78,10 +77,4 @@ pub struct MotieTransformed {
     pub timestamp: String,
     pub votes: Vec<shared::VoteDto>,
     pub documents: Vec<shared::MotieDocumentDto>
-}
-
-#[derive(Debug, Serialize,Deserialize,Clone)]
-pub struct VoteTransformed {
-    pub party: String,
-    pub vote: String,
 }

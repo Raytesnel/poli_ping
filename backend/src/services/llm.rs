@@ -15,11 +15,12 @@ pub struct LlmResponse {
 }
 
 async fn call_gemini(prompt: &str) -> Result<String, reqwest::Error> {
+    let llm_model = std::env::var("LLM_MODEL").expect("LLM_MODEL must be set");
     let client = Client::new();
     let api_key = std::env::var("LLM_KEY").expect("LLM_KEY must be set");
     let url = format!(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={}",
-        api_key
+        "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}",
+        api_key=api_key, model=llm_model
     );
 
     let body = json!({

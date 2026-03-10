@@ -5,6 +5,7 @@ use tokio::time::{Duration, sleep};
 
 use crate::models::api_models::MotieTransformed;
 use serde::{Deserialize, Serialize};
+use tracing::{debug, info, warn};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LlmResponse {
@@ -28,10 +29,10 @@ pub async fn call_gemini_with_retry(prompt: &str) -> Result<String, anyhow::Erro
                 let msg = e.to_string();
                 if msg.contains("429") || msg.contains("quota") {
                     if attempts > 5 {
-                        println!("Waiting is not helping.");
+                        warn!("Waiting is not helping.");
                         return Err(e.into());
                     }
-                    println!("Rate limit hit, waiting 40 seconds...");
+                    warn!("Rate limit hit, waiting 40 seconds...");
                     sleep(Duration::from_secs(40)).await;
                 } else {
                     return Err(e.into());
@@ -60,10 +61,10 @@ async fn call_gemini(prompt: &str) -> Result<String, reqwest::Error> {
     });
 
     let resp = client.post(url).json(&body).send().await?;
-    println!("status: {}", resp.status());
+    debug!("status: {}", resp.status());
 
     let text = resp.text().await?;
-    println!("body: {}", text);
+    debug!("body: {}", text);
     Ok(text)
 }
 
@@ -101,7 +102,7 @@ fn extract_text(response: &str) -> Option<LlmResponse> {
 }
 
 pub async fn convert_with_llm(motie: &MotieTransformed) -> LlmResponse {
-    println!("lets convert motie: {motie:?}");
+    info!("lets convert motie: {motie:?}");
 
     let document_text = get_document_text(&motie.documents)
         .await
@@ -191,6 +192,6 @@ pub async fn get_document_text(
         combined_text.push_str(&text);
         combined_text.push_str("\n\n"); // scheiding tussen documenten
     }
-    println!("document extracted: \n\n{}", combined_text);
+    debug!("document extracted: \n\n{}", combined_text);
     Ok(combined_text)
 }

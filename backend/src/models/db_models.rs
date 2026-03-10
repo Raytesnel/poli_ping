@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 
 #[derive(sqlx::FromRow)]
 pub struct Motie {
@@ -15,4 +16,11 @@ pub struct PartyVote {
     pub motie_id: i64,
     pub party: String,
     pub vote: String,
+}
+
+#[derive(sqlx::FromRow, Debug,Serialize, Deserialize, Clone)]
+pub struct MotieDocument {
+    pub id: i64,
+    pub motie_id: i64,
+    pub document_id: String,
 }

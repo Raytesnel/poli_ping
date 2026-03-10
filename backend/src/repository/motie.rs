@@ -1,7 +1,7 @@
 use crate::models::api_models::MotieTransformed;
-use crate::models::db_models::{Motie, PartyVote};
-use sqlx::{QueryBuilder, Row, Sqlite};
+use crate::models::db_models::{Motie, MotieDocument, PartyVote};
 use sqlx::SqlitePool;
+use sqlx::{QueryBuilder, Row, Sqlite};
 
 pub async fn get_next_unseen_motie(
     pool: &SqlitePool,
@@ -95,19 +95,13 @@ pub async fn insert_party_vote(
     Ok(())
 }
 
-
-pub async fn existing_ids(
-    pool: &SqlitePool,
-    ids: &[String],
-) -> Result<Vec<String>, sqlx::Error> {
-
+pub async fn existing_ids(pool: &SqlitePool, ids: &[String]) -> Result<Vec<String>, sqlx::Error> {
     if ids.is_empty() {
         return Ok(vec![]);
     }
 
-    let mut qb = QueryBuilder::<Sqlite>::new(
-        "SELECT external_id FROM moties WHERE external_id IN ("
-    );
+    let mut qb =
+        QueryBuilder::<Sqlite>::new("SELECT external_id FROM moties WHERE external_id IN (");
 
     let mut separated = qb.separated(",");
 
@@ -117,13 +111,42 @@ pub async fn existing_ids(
 
     qb.push(")");
 
-    let rows = qb
-        .build()
-        .fetch_all(pool)
-        .await?;
+    let rows = qb.build().fetch_all(pool).await?;
 
     Ok(rows
         .into_iter()
         .map(|row| row.get::<String, _>("external_id"))
         .collect())
+}
+
+pub async fn insert_documents(
+    document_ids: &String,
+    motie_id: i64,
+    pool: &SqlitePool,
+) -> Result<(), sqlx::Error> {
+    sqlx::query!(
+            r#"
+        INSERT INTO motie_documents (motie_id, document_id)
+        VALUES (?, ?)
+        "#,
+            motie_id,
+            document_ids
+        )
+        .execute(pool)
+        .await?;
+    Ok(())
+}
+
+pub async fn get_document_ids(pool: &SqlitePool, motie_id: &i64) -> Result<Vec<MotieDocument>, sqlx::Error> {
+    sqlx::query_as!(
+        MotieDocument,
+        r#"
+        SELECT id,motie_id,document_id
+        FROM motie_documents
+        WHERE motie_id = ?
+        "#,
+        motie_id
+    )
+        .fetch_all(pool)
+        .await
 }

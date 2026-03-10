@@ -7,8 +7,8 @@ use sqlx::SqlitePool;
 use crate::models::api_models::{ApiResponse, MotieTransformed};
 use crate::repository::motie::existing_ids;
 use crate::services::llm::convert_with_llm;
-use shared::{MotieDto, MotieProgressDto, VoteDto};
-
+use shared::{MotieDocumentDto, MotieDto, MotieProgressDto, VoteDto};
+use crate::models::db_models::MotieDocument;
 
 pub async fn get_moties() -> Result<Json<Vec<MotieTransformed>>, StatusCode> {
 
@@ -26,8 +26,8 @@ pub async fn get_moties() -> Result<Json<Vec<MotieTransformed>>, StatusCode> {
 async fn fetch_moties_from_api() -> Result<ApiResponse, anyhow::Error> {
     let date = Local::now().format("%Y-%m-%d").to_string();
     let url = format!(
-        "https://gegevensmagazijn.tweedekamer.nl/OData/v4/2.0/Zaak?$filter=Verwijderd%20eq%20false%20and%20Soort%20eq%20'Motie'and%20ApiGewijzigdOp%20gt {}&$orderby=GewijzigdOp%20desc&$expand=Besluit($expand=Stemming($expand=Fractie)),Document",
-        date
+        "https://gegevensmagazijn.tweedekamer.nl/OData/v4/2.0/Zaak?$filter=Verwijderd%20eq%20false%20and%20Soort%20eq%20%27Motie%27%20and%20ApiGewijzigdOp%20ge%20{date}%20and%20Besluit/any(b:%20b/Stemming/any())&$orderby=GewijzigdOp%20desc&$expand=Besluit($expand=Stemming($expand=Fractie)),Document",
+        date=date
     );
     println!("Fetching moties from api: {}", url);
     let client = Client::new();
@@ -69,6 +69,12 @@ async fn transform_moties(moties: ApiResponse) -> Result<Vec<MotieTransformed>, 
             else {
                 continue;
             };
+
+            let documents: Vec<MotieDocumentDto> = m.document.iter().map(|d| MotieDocumentDto{
+                document_id:d.id.clone(),
+            })
+            .collect();
+
             let motie = MotieTransformed {
                 external_id: m.id,
                 title: m.onderwerp.unwrap_or_else(|| "Unknown".to_string()),
@@ -76,6 +82,7 @@ async fn transform_moties(moties: ApiResponse) -> Result<Vec<MotieTransformed>, 
                 result: besluit_result.trim_end_matches('.').to_string(),
                 timestamp: m.gewijzigd_op,
                 votes,
+                documents:documents
             };
 
             result.push(motie);
@@ -112,6 +119,7 @@ pub async fn sync_latest_moties(
             description: llm_response.beschrijving,
             votes: motie.votes,
             timestamp: motie.timestamp.clone(),
+            documents: motie.documents
 
         };
         let motie_id = motie::insert_motie(pool, &motie).await?;
@@ -122,6 +130,15 @@ pub async fn sync_latest_moties(
                 motie_id,
                 &vote.party,
                 &vote.vote,
+            )
+                .await?;
+        }
+        for document in &motie.documents {
+            motie::insert_documents(
+                &document.document_id,
+                motie_id,
+                pool,
+
             )
                 .await?;
         }
@@ -136,13 +153,14 @@ pub async fn get_next_motie(pool: &SqlitePool, user_id: &str) -> Result<MotieDto
         .await?
         .ok_or_else(|| anyhow::anyhow!("No more moties"))?;
     let votes = motie::get_party_votes(pool, motie.id).await?;
-
+    let document = motie::get_document_ids(pool, &motie.id).await?;
     Ok(MotieDto {
         id: motie.id as i32,
         title: motie.title,
         description: motie.description,
         result: motie.result,
         timestamp: motie.timestamp.to_string(),
+        document_id:document.iter().map(|f| f.document_id.clone()).collect(),
         votes: votes
             .into_iter()
             .map(|v| VoteDto {

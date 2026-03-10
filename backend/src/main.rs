@@ -1,5 +1,7 @@
-use sqlx::SqlitePool;
 use crate::services::motie_services;
+use sqlx::SqlitePool;
+use tracing::{debug, error, info, warn};
+use tracing_subscriber::EnvFilter;
 
 mod app;
 mod models;
@@ -14,14 +16,14 @@ pub async fn open_sqlite_pool() -> SqlitePool {
     let database_url = std::env::var("DATABASE_URL")
         .expect("DATABASE_URL must be set");
 
-    println!("DATABASE_URL: {database_url}");
+    info!("DATABASE_URL: {database_url}");
 
     let db_path = database_url.strip_prefix("sqlite://")
         .unwrap_or(&database_url);
 
-    println!("Resolved DB path: {db_path}");
+    debug!("Resolved DB path: {db_path}");
     let abs_path = std::env::current_dir().unwrap().join(db_path);
-    println!("Absolute path: {:?}", abs_path);
+    debug!("Absolute path: {:?}", abs_path);
 
     SqlitePool::connect(&database_url).await.unwrap_or_else(|err| {
         panic!(
@@ -37,7 +39,13 @@ pub async fn open_sqlite_pool() -> SqlitePool {
 
 #[tokio::main]
 async fn main() {
-
+    dotenv::dotenv().ok();
+    let log_level = std::env::var("RUST_LOG").expect("RUST_LOG must be set");
+    tracing_subscriber::fmt()
+        .with_env_filter(log_level.clone())
+        .compact()
+        .init();
+    debug!("log level: {log_level}");
     let pool = open_sqlite_pool()
         .await;
     motie_services::sync_latest_moties(&pool)

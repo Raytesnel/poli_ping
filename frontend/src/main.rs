@@ -59,7 +59,7 @@ fn MotionView() -> Element {
             let mut progress_state = progress_state.clone(); // clone for async
             spawn(async move {
                 send_vote(client, motie_id, vote_value).await;
-                println!("motie id {} sent vote", motie_id);
+                info!("motie id {} sent vote", motie_id);
                 motion_resource.restart();
                 progress_state.restart();
             });

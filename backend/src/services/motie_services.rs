@@ -8,6 +8,7 @@ use crate::repository::motie::existing_ids;
 use crate::services::llm::convert_with_llm;
 use shared::{MotieDocumentDto, MotieDto, MotieProgressDto, VoteDto};
 use crate::models::db_models::MotieDocument;
+use tracing::{debug, error, info, warn};
 
 pub async fn get_moties() -> Result<Json<Vec<MotieTransformed>>, StatusCode> {
 
@@ -28,7 +29,8 @@ async fn fetch_moties_from_api() -> Result<ApiResponse, anyhow::Error> {
         "https://gegevensmagazijn.tweedekamer.nl/OData/v4/2.0/Zaak?$filter=Verwijderd%20eq%20false%20and%20Soort%20eq%20%27Motie%27%20and%20ApiGewijzigdOp%20ge%20{date}%20and%20Besluit/any(b:%20b/Stemming/any())&$orderby=GewijzigdOp%20desc&$expand=Besluit($expand=Stemming($expand=Fractie)),Document",
         date=date
     );
-    println!("Fetching moties from api: {}", url);
+    info!("Fetching moties");
+    debug!("Fetching moties from api: {}", url);
     let client = Client::new();
 
     let json: ApiResponse = client
@@ -40,7 +42,7 @@ async fn fetch_moties_from_api() -> Result<ApiResponse, anyhow::Error> {
         .await?;
 
     Ok({
-        println!("Done fetching moties from api");
+        info!("Done fetching moties from api");
         json })
 }
 

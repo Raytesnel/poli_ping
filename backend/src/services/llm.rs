@@ -1,5 +1,6 @@
 use reqwest::Client;
 use serde_json::json;
+use pdf_extract::extract_text_from_mem;
 
 use serde::{Deserialize, Serialize};
 use crate::models::api_models::MotieTransformed;
@@ -73,6 +74,9 @@ fn extract_text(response: &str) -> Option<LlmResponse> {
 
 pub async fn convert_with_llm(motie:&MotieTransformed) ->LlmResponse {
     println!("lets convert motie: {motie:?}");
+
+    let document_text = get_document_text(&motie.documents).await.unwrap_or_default();
+
     let minimal = json!({
   "title": motie.title,
   "description": motie.description
@@ -94,8 +98,9 @@ Focus op:
 Negeer administratieve metadata zoals t.v.v.-nummers.
 
 Motie data:
-{}
-
+{motie_data}
+Motie information:
+{document_text}
 JSON structuur:
 {{
   "titel_kort": "...",
@@ -108,7 +113,7 @@ JSON structuur:
 Regels:
 - titel_kort: korte, begrijpelijke titel (max ~80 tekens)
 - kamerleden: lijst van indieners (achternamen)
-- beschrijving: neutrale samenvatting in één of twee zinnen
+- beschrijving: neutrale samenvatting in drie of vijf zinnen
 - tags: relevante onderwerpen (3-6 tags)
 - thema: breed beleidsdomein (bijv. Economie, Migratie, Binnenlands bestuur)
 - als informatie ontbreekt: laat veld leeg of gebruik null
@@ -117,7 +122,7 @@ Regels:
 - Geen trailing komma's.
 - Als informatie ontbreekt: gebruik null.
 - geen Markdown of extra tekst
-"#,minimal);
+"#,motie_data=minimal,document_text=document_text);
     // how to add the
 
     match call_gemini(&prompt).await {
@@ -126,4 +131,37 @@ Regels:
         }
         Err(e) => panic!("Error: {}", e),
     }
+}
+
+
+pub async fn download_document(document_id: &str) -> Result<Vec<u8>, anyhow::Error> {
+    let url = format!(
+        "https://gegevensmagazijn.tweedekamer.nl/OData/v4/2.0/Document({})/resource",
+        document_id
+    );
+
+    let bytes = reqwest::get(url)
+        .await?
+        .bytes()
+        .await?;
+
+    Ok(bytes.to_vec())
+}
+
+
+pub fn parse_pdf_text(pdf_bytes: &[u8]) -> Result<String, anyhow::Error> {
+    let text = extract_text_from_mem(pdf_bytes)?;
+    Ok(text)
+}
+
+pub async fn get_document_text(document_ids: &Vec<shared::MotieDocumentDto>) -> Result<String, anyhow::Error> {
+    let mut combined_text = String::new();
+    for document in document_ids{
+        let pdf = download_document(&document.document_id).await?;
+        let text = parse_pdf_text(&pdf)?;
+        combined_text.push_str(&text);
+        combined_text.push_str("\n\n"); // scheiding tussen documenten
+    }
+    println!("document extracted: \n\n{}", combined_text);
+    Ok(combined_text)
 }

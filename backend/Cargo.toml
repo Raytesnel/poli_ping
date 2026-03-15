@@ -23,3 +23,4 @@ anyhow = "1.0.102"
 dotenvy = "0.15.7"
 pdf-extract = "0.10.0"
 dotenv = "0.15.0"
+uuid = { version = "1.22.0", features = ["v4"] }

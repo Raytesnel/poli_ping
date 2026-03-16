@@ -204,6 +204,7 @@ mod tests {
 
     #[sqlx::test]
     async fn insert_motie_should_store_motie(pool: SqlitePool) {
+        // Given
         let documents = vec![MotieDocumentDto {
             document_id: "abc".into(),
         }];
@@ -226,9 +227,9 @@ mod tests {
             votes: votes,
             documents: documents,
         };
-        // Act
+        // When
         let id = insert_motie(&pool, &motie).await.unwrap();
-
+        // Then
         let stored = sqlx::query!("SELECT title FROM moties WHERE id = ?", id)
             .fetch_one(&pool)
             .await
@@ -242,13 +243,11 @@ mod tests {
         let motie_id = seed_motie(&pool).await;
         let party = "D66";
         let vote = "tegen";
-
-        // Then
+        // When
         insert_party_vote(&pool, motie_id.clone(), party, vote)
             .await
             .unwrap();
-
-        // When
+        // Then
         let stored = sqlx::query_as!(
             PartyVote,
             "SELECT id,party,vote,motie_id FROM party_votes WHERE motie_id = ?",
@@ -257,7 +256,6 @@ mod tests {
         .fetch_one(&pool)
         .await
         .unwrap();
-
         assert_eq!(stored.party, party);
         assert_eq!(stored.vote, vote);
         assert_eq!(stored.motie_id, motie_id);
@@ -267,12 +265,10 @@ mod tests {
         // Given
         let motie_id = seed_motie(&pool).await;
         let document_id = "some_id".to_string();
-
         // When
         insert_documents(&document_id, motie_id.clone(), &pool)
             .await
             .unwrap();
-
         // Then
         let stored = sqlx::query_as!(
             MotieDocument,
@@ -282,22 +278,21 @@ mod tests {
         .fetch_one(&pool)
         .await
         .unwrap();
-
         assert_eq!(stored.motie_id, motie_id);
         assert_eq!(stored.document_id, document_id);
     }
     #[sqlx::test]
     async fn get_document_ids_of_given_motie(pool: SqlitePool) {
+        // Given
         let motie_id = seed_motie(&pool).await;
         let motie_id_2 = seed_motie(&pool).await;
         seed_document(&pool, motie_id, "abc").await;
         seed_document(&pool, motie_id, "def").await;
         seed_document(&pool, motie_id_2, "ghi").await;
-
         let expected_document_ids = vec!["abc", "def"];
-        // Act
+        // When
         let result = get_document_ids(&pool, &motie_id).await.unwrap();
-
+        // Then
         assert_eq!(
             result
                 .iter()
@@ -313,10 +308,8 @@ mod tests {
         let motie_id = seed_motie(&pool).await;
         let _motie_id_2 = seed_motie(&pool).await;
         let user = "Ash";
-
         // When
         let result_moties = get_next_unseen_motie(&pool, user).await;
-
         // Then
         assert_eq!(result_moties.unwrap().unwrap().id, motie_id);
     }
@@ -342,10 +335,8 @@ mod tests {
         .execute(&pool)
         .await
         .unwrap();
-
         // When
         let result_moties = get_next_unseen_motie(&pool, user).await;
-
         // Then
         assert_eq!(result_moties.unwrap().unwrap().id, motie_id_2);
     }
@@ -357,10 +348,10 @@ mod tests {
         let party = "D66";
         seed_vote(&pool, motie_id as i32, &party, "tegen").await;
         seed_vote(&pool, motie_id as i32, &party, "voor").await;
-        // Then
+        // When
         let result_votes = get_party_votes(&pool, motie_id.clone()).await.unwrap();
 
-        // When
+        // Then
         for result in &result_votes {
             assert_eq!(result.party, party);
             assert_eq!(result.motie_id, motie_id);
@@ -381,10 +372,9 @@ mod tests {
         .await
         .unwrap();
         let ids = vec!["existing-id".to_string(), "not_existing_id".to_string()];
-
-
+        // When
         let result = existing_ids(&pool, &ids).await.unwrap();
-
+        //Then
         assert_eq!(result, vec!["existing-id"]);
     }
 }

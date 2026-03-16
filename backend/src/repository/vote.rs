@@ -46,14 +46,14 @@ mod tests {
     }
     #[sqlx::test]
     async fn save_user_votes_to_db(pool: SqlitePool) {
+        // Given
         let motie_id = seed_motie(&pool).await;
         let user_id = "Ash";
         let vote = "tegen";
-        // Act
+        // When
         let result = insert_user_vote(&pool, &user_id, motie_id as i32, vote).await;
-
+        // Then
         assert!(result.is_ok());
-
         let vote_result = sqlx::query_as!(
             UserVotes,
         r#"

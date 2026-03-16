@@ -11,17 +11,23 @@ pub struct AppState {
     pub pool: SqlitePool,
 }
 
-pub async fn run(pool: SqlitePool) {
+pub fn create_app(pool: SqlitePool) -> Router {
     let cors = CorsLayer::new()
-        .allow_origin(Any) // allow all origins for dev
+        .allow_origin(Any)
         .allow_methods(Any)
         .allow_headers(Any);
+
     let state = AppState { pool };
-    let app = Router::new()
+
+    Router::new()
         .merge(moties::routes())
         .merge(votes::routes())
         .layer(cors)
-        .with_state(state);
+        .with_state(state)
+}
+
+pub async fn run(pool: SqlitePool) {
+    let app = create_app(pool);
 
     let listener = tokio::net::TcpListener::bind(BASE_URL_BACKEND).await.unwrap();
     axum::serve(listener, app).await.unwrap();

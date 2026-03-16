@@ -158,7 +158,6 @@ pub async fn get_document_ids(
 mod tests {
     use super::*;
     use shared::{MotieDocumentDto, VoteDto};
-    use tower_http::follow_redirect::policy::PolicyExt;
     use uuid::Uuid;
     async fn seed_motie(pool: &SqlitePool) -> i64 {
         let random_id = Uuid::new_v4().to_string();
@@ -312,7 +311,7 @@ mod tests {
     async fn get_next_unseens_motie_when_no_vote(pool: SqlitePool) {
         // Given
         let motie_id = seed_motie(&pool).await;
-        let motie_id_2 = seed_motie(&pool).await;
+        let _motie_id_2 = seed_motie(&pool).await;
         let user = "Ash";
 
         // When
@@ -327,7 +326,7 @@ mod tests {
         // Given
         let motie_id = seed_motie(&pool).await;
         let motie_id_2 = seed_motie(&pool).await;
-        let motie_id_3 = seed_motie(&pool).await;
+        let _motie_id_3 = seed_motie(&pool).await;
         let user = "Ash";
         sqlx::query!(
             r#"

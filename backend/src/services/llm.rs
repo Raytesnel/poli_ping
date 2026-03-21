@@ -1,7 +1,8 @@
+use async_trait::async_trait;
 use pdf_extract::extract_text_from_mem;
 use reqwest::Client;
 use serde_json::json;
-use tokio::time::{Duration, sleep};
+use tokio::time::{sleep, Duration};
 
 use crate::models::api_models::MotieTransformed;
 use serde::{Deserialize, Serialize};
@@ -14,6 +15,19 @@ pub struct LlmResponse {
     pub beschrijving: String,
     pub thema: String,
     pub tags: Vec<String>,
+}
+
+#[async_trait]
+pub trait LlmService: Send + Sync {
+    async fn convert(&self, motie: &MotieTransformed) -> LlmResponse;
+}
+pub struct RealLlmService;
+
+#[async_trait]
+impl LlmService for RealLlmService {
+    async fn convert(&self, motie: &MotieTransformed) -> LlmResponse {
+        convert_with_llm(motie).await
+    }
 }
 
 pub async fn call_gemini_with_retry(prompt: &str) -> Result<String, anyhow::Error> {

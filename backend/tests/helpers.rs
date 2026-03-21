@@ -4,7 +4,7 @@ use sqlx::SqlitePool;
 use uuid::Uuid;
 
 pub fn test_server(pool: SqlitePool) -> TestServer {
-    let app = create_app(pool);
+    let (app,state) = create_app(pool);
     TestServer::new(app)
 }
 

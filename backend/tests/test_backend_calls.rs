@@ -35,9 +35,9 @@ use helpers::{test_server, seed_motie};
 use shared::{MotieDto, GET_NEXT_MOTIE};
 
 
-///given the state of 1 unvoted motie
-/// when asks the next unvoted motie
-/// then the motie contains at least:
+///Given the state of 1 unvoted motie
+///When asks the next unvoted motie
+///Then the motie contains at least:
 ///     title
 ///     description
 ///     votes

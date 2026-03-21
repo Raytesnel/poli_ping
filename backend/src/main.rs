@@ -1,6 +1,9 @@
+use crate::services::llm::RealLlmService;
 use crate::services::motie_services;
+use crate::services::motie_services::RealMotieApi;
 use sqlx::SqlitePool;
 use tracing::{debug, info};
+use crate::app::create_app;
 
 mod app;
 mod models;
@@ -36,6 +39,7 @@ pub async fn open_sqlite_pool() -> SqlitePool {
     })
 }
 
+
 #[tokio::main]
 async fn main() {
     dotenv::dotenv().ok();
@@ -47,9 +51,9 @@ async fn main() {
     debug!("log level: {log_level}");
     let pool = open_sqlite_pool()
         .await;
-    motie_services::sync_latest_moties(&pool)
+    let (app,state) = create_app(pool);
+    motie_services::sync_latest_moties(&state.pool,state.api.as_ref(),state.llm.as_ref())
         .await
         .expect("Failed to sync moties");
-
-    app::run(pool).await;
+    app::run(app).await;
 }

@@ -1,17 +1,29 @@
+use crate::models::api_models::{ApiResponse, MotieTransformed};
 use crate::repository::motie;
-use axum::{http::StatusCode, Json};
+use crate::repository::motie::existing_ids;
+use crate::services::llm::{LlmService, convert_with_llm};
+use async_trait::async_trait;
+use axum::{Json, http::StatusCode};
 use chrono::Local;
 use reqwest::Client;
-use sqlx::SqlitePool;
-use crate::models::api_models::{ApiResponse, MotieTransformed};
-use crate::repository::motie::existing_ids;
-use crate::services::llm::convert_with_llm;
 use shared::{MotieDocumentDto, MotieDto, MotieProgressDto, VoteDto};
+use sqlx::SqlitePool;
 use tracing::{debug, info};
 
-pub async fn get_moties() -> Result<Json<Vec<MotieTransformed>>, StatusCode> {
+#[async_trait]
+pub trait MotieApi: Send + Sync  {
+    async fn fetch_moties(&self) -> Result<ApiResponse, anyhow::Error>;
+}
+pub struct RealMotieApi;
+#[async_trait]
+impl MotieApi for RealMotieApi {
+    async fn fetch_moties(&self) -> Result<ApiResponse, anyhow::Error> {
+        fetch_moties_from_api().await
+    }
+}
 
-    let moties = fetch_moties_from_api()
+pub async fn get_moties(api: &dyn MotieApi) -> Result<Json<Vec<MotieTransformed>>, StatusCode> {
+    let moties = api.fetch_moties()
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -26,7 +38,7 @@ async fn fetch_moties_from_api() -> Result<ApiResponse, anyhow::Error> {
     let date = Local::now().format("%Y-%m-%d").to_string();
     let url = format!(
         "https://gegevensmagazijn.tweedekamer.nl/OData/v4/2.0/Zaak?$filter=Verwijderd%20eq%20false%20and%20Soort%20eq%20%27Motie%27%20and%20ApiGewijzigdOp%20ge%20{date}%20and%20Besluit/any(b:%20b/Stemming/any())&$orderby=GewijzigdOp%20desc&$expand=Besluit($expand=Stemming($expand=Fractie)),Document",
-        date=date
+        date = date
     );
     info!("Fetching moties");
     debug!("Fetching moties from api: {}", url);
@@ -42,7 +54,8 @@ async fn fetch_moties_from_api() -> Result<ApiResponse, anyhow::Error> {
 
     Ok({
         info!("Done fetching moties from api");
-        json })
+        json
+    })
 }
 
 async fn transform_moties(moties: ApiResponse) -> Result<Vec<MotieTransformed>, anyhow::Error> {
@@ -70,10 +83,13 @@ async fn transform_moties(moties: ApiResponse) -> Result<Vec<MotieTransformed>, 
                 continue;
             };
 
-            let documents: Vec<MotieDocumentDto> = m.document.iter().map(|d| MotieDocumentDto{
-                document_id:d.id.clone(),
-            })
-            .collect();
+            let documents: Vec<MotieDocumentDto> = m
+                .document
+                .iter()
+                .map(|d| MotieDocumentDto {
+                    document_id: d.id.clone(),
+                })
+                .collect();
 
             let motie = MotieTransformed {
                 external_id: m.id,
@@ -82,7 +98,7 @@ async fn transform_moties(moties: ApiResponse) -> Result<Vec<MotieTransformed>, 
                 result: besluit_result.trim_end_matches('.').to_string(),
                 timestamp: m.gewijzigd_op,
                 votes,
-                documents:documents
+                documents: documents,
             };
 
             result.push(motie);
@@ -95,12 +111,12 @@ async fn transform_moties(moties: ApiResponse) -> Result<Vec<MotieTransformed>, 
 
 pub async fn sync_latest_moties(
     pool: &SqlitePool,
+    api: &dyn MotieApi,
+    llm: &dyn LlmService,
 ) -> Result<(), anyhow::Error> {
-    let api_response = fetch_moties_from_api().await?;
+    let api_response = api.fetch_moties().await?;
     let transformed = transform_moties(api_response).await?;
-    let ids: Vec<String> = transformed.iter()
-        .map(|m| m.external_id.clone())
-        .collect();
+    let ids: Vec<String> = transformed.iter().map(|m| m.external_id.clone()).collect();
 
     let existing_id_list = existing_ids(pool, &ids).await?;
     let existing: std::collections::HashSet<_> = existing_id_list.into_iter().collect();
@@ -111,42 +127,28 @@ pub async fn sync_latest_moties(
         .collect();
 
     for mut motie in new_moties {
-        let llm_response = convert_with_llm(&motie).await;
-        motie = MotieTransformed{
-            external_id:motie.external_id,
-            title:llm_response.titel_kort,
+        let llm_response = llm.convert(&motie).await;
+        motie = MotieTransformed {
+            external_id: motie.external_id,
+            title: llm_response.titel_kort,
             result: motie.result,
             description: llm_response.beschrijving,
             votes: motie.votes,
             timestamp: motie.timestamp.clone(),
-            documents: motie.documents
-
+            documents: motie.documents,
         };
         let motie_id = motie::insert_motie(pool, &motie).await?;
 
         for vote in &motie.votes {
-            motie::insert_party_vote(
-                pool,
-                motie_id,
-                &vote.party,
-                &vote.vote,
-            )
-                .await?;
+            motie::insert_party_vote(pool, motie_id, &vote.party, &vote.vote).await?;
         }
         for document in &motie.documents {
-            motie::insert_documents(
-                &document.document_id,
-                motie_id,
-                pool,
-
-            )
-                .await?;
+            motie::insert_documents(&document.document_id, motie_id, pool).await?;
         }
     }
 
     Ok(())
 }
-
 
 pub async fn get_next_motie(pool: &SqlitePool, user_id: &str) -> Result<MotieDto, anyhow::Error> {
     let motie = motie::get_next_unseen_motie(pool, &user_id)
@@ -160,7 +162,7 @@ pub async fn get_next_motie(pool: &SqlitePool, user_id: &str) -> Result<MotieDto
         description: motie.description,
         result: motie.result,
         timestamp: motie.timestamp.to_string(),
-        document_id:document.iter().map(|f| f.document_id.clone()).collect(),
+        document_id: document.iter().map(|f| f.document_id.clone()).collect(),
         votes: votes
             .into_iter()
             .map(|v| VoteDto {
@@ -188,4 +190,99 @@ pub async fn get_user_motie_progress(
         voted: voted.0,
         total: total.0,
     })
+}
+/* unit tests:
+sync_latest_moties should return a list of moties from the mocked api
+sync_latest_moties should return empty list of moties when no new moties are from the mocked api
+sync_latest_moties should insert the moties into the db when new moties are from mocked api
+sync_latest_moties should call the mocked LLM api for converting the moties to human readable moties.
+
+get_next_motie should return the first motie of the DB
+get next moties url when no moties available should return 'no more moties'
+get next moties url when all moties are voted should return 'no more moties'
+
+get progress url for user when no moties available should return 100%
+get progress url for user when a random percentage complete should return correct numbers
+get progress url when multiple items are voted should return 100%
+
+ */
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::api_models::{Besluit, Document, Stemming, Zaak};
+    use crate::services::llm::LlmResponse;
+
+    struct MockApi {
+        response: ApiResponse,
+    }
+
+    #[async_trait]
+    impl MotieApi for MockApi {
+        async fn fetch_moties(&self) -> Result<ApiResponse, anyhow::Error> {
+            Ok(self.response.clone())
+        }
+    }
+
+    struct MockLlm;
+
+    #[async_trait]
+    impl LlmService for MockLlm {
+        async fn convert(&self, motie: &MotieTransformed) -> LlmResponse {
+            LlmResponse {
+                titel_kort: format!("SHORT {}", motie.title),
+                beschrijving: "mock description".to_string(),
+                kamerleden: vec!["D66".to_string(), "ProNL".to_string()],
+                thema: "mock description".to_string(),
+                tags: vec!["mock".to_string(), "test".to_string()],
+            }
+        }
+    }
+
+    #[sqlx::test]
+    async fn sync_latest_moties_witouth_moties_returns_empty_list(pool: SqlitePool) {}
+    #[sqlx::test]
+    async fn sync_latest_moties_with_moties_returns_list_moties(pool: SqlitePool) {
+        let api = MockApi {
+            response: ApiResponse {
+                value: vec![Zaak {
+                    id: "123".to_string(),
+                    titel: "".to_string(),
+                    onderwerp: Some("test".to_string()),
+                    gewijzigd_op: "2024-6-10".to_string(),
+                    besluit: vec![Besluit {
+                        id: "1234".to_string(),
+                        besluit_tekst: Some("voor".to_string()),
+                        stemming: vec![
+                            Stemming {
+                                id: "1234".to_string(),
+                                soort: "voor".to_string(),
+                                actor_fractie: Some("D66".to_string()),
+                            },
+                            Stemming {
+                                id: "1234".to_string(),
+                                soort: "tegen".to_string(),
+                                actor_fractie: Some("PVV".to_string()),
+                            },
+                        ],
+                    }],
+                    document: vec![
+                        Document {
+                            id: "123".to_string(),
+                        }
+                    ],
+                }],
+            },
+        };
+
+        let llm = MockLlm;
+
+        sync_latest_moties(&pool, &api, &llm).await.unwrap();
+
+        let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM moties")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        println!("count: {:?}", count);
+        assert!(count.0 > 0);
+    }
 }

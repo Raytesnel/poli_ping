@@ -1,13 +1,27 @@
+use crate::models::api_models::{ApiResponse, MotieTransformed};
 use crate::repository::motie;
+use crate::repository::motie::existing_ids;
+use crate::services::llm::{convert_with_llm, LlmService};
+use async_trait::async_trait;
 use axum::{http::StatusCode, Json};
 use chrono::Local;
 use reqwest::Client;
-use sqlx::SqlitePool;
-use crate::models::api_models::{ApiResponse, MotieTransformed};
-use crate::repository::motie::existing_ids;
-use crate::services::llm::convert_with_llm;
 use shared::{MotieDocumentDto, MotieDto, MotieProgressDto, VoteDto};
+use sqlx::SqlitePool;
 use tracing::{debug, info};
+
+
+#[async_trait]
+pub trait MotieApi {
+    async fn fetch_moties(&self) -> Result<ApiResponse, anyhow::Error>;
+}
+pub struct RealMotieApi;
+#[async_trait]
+impl MotieApi for RealMotieApi {
+    async fn fetch_moties(&self) -> Result<ApiResponse, anyhow::Error> {
+        fetch_moties_from_api().await
+    }
+}
 
 pub async fn get_moties() -> Result<Json<Vec<MotieTransformed>>, StatusCode> {
 
@@ -95,8 +109,10 @@ async fn transform_moties(moties: ApiResponse) -> Result<Vec<MotieTransformed>, 
 
 pub async fn sync_latest_moties(
     pool: &SqlitePool,
+    api: &dyn MotieApi,
+    llm: &dyn LlmService,
 ) -> Result<(), anyhow::Error> {
-    let api_response = fetch_moties_from_api().await?;
+    let api_response = api.fetch_moties().await?;
     let transformed = transform_moties(api_response).await?;
     let ids: Vec<String> = transformed.iter()
         .map(|m| m.external_id.clone())
@@ -111,7 +127,7 @@ pub async fn sync_latest_moties(
         .collect();
 
     for mut motie in new_moties {
-        let llm_response = convert_with_llm(&motie).await;
+        let llm_response = llm.convert(&motie).await;
         motie = MotieTransformed{
             external_id:motie.external_id,
             title:llm_response.titel_kort,
@@ -188,4 +204,31 @@ pub async fn get_user_motie_progress(
         voted: voted.0,
         total: total.0,
     })
+}
+/* unit tests:
+sync_latest_moties should return a list of moties from the mocked api
+sync_latest_moties should return empty list of moties when no new moties are from the mocked api
+sync_latest_moties should insert the moties into the db when new moties are from mocked api
+sync_latest_moties should call the mocked LLM api for converting the moties to human readable moties.
+
+get_next_motie should return the first motie of the DB
+get next moties url when no moties available should return 'no more moties'
+get next moties url when all moties are voted should return 'no more moties'
+
+get progress url for user when no moties available should return 100%
+get progress url for user when a random percentage complete should return correct numbers
+get progress url when multiple items are voted should return 100%
+
+ */
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[sqlx::test]
+    async fn sync_latest_moties_witouth_moties_returns_empty_list(pool: SqlitePool) {
+
+    }
+    #[sqlx::test]
+    async fn sync_latest_moties_with_moties_returns_list_moties(pool: SqlitePool) {
+
+    }
 }

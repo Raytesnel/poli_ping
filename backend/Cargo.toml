@@ -25,3 +25,4 @@ pdf-extract = "0.10.0"
 dotenv = "0.15.0"
 uuid = { version = "1.22.0", features = ["v4"] }
 axum-test = "19.1.1"
+async-trait = "0.1.89"

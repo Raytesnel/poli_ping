@@ -1,4 +1,6 @@
+use crate::services::llm::RealLlmService;
 use crate::services::motie_services;
+use crate::services::motie_services::RealMotieApi;
 use sqlx::SqlitePool;
 use tracing::{debug, info};
 
@@ -47,7 +49,7 @@ async fn main() {
     debug!("log level: {log_level}");
     let pool = open_sqlite_pool()
         .await;
-    motie_services::sync_latest_moties(&pool)
+    motie_services::sync_latest_moties(&pool,&RealMotieApi,&RealLlmService)
         .await
         .expect("Failed to sync moties");
 

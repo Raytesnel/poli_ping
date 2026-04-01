@@ -1,5 +1,5 @@
-mod motie_dto;
 mod api;
+mod motie_dto;
 mod vote_dto;
 
 pub use api::*;

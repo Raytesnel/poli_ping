@@ -26,8 +26,8 @@ pub async fn insert_user_vote(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use uuid::Uuid;
     use crate::models::db_models::UserVotes;
+    use uuid::Uuid;
 
     async fn seed_motie(pool: &SqlitePool) -> i64 {
         let random_id = Uuid::new_v4().to_string();
@@ -56,19 +56,18 @@ mod tests {
         assert!(result.is_ok());
         let vote_result = sqlx::query_as!(
             UserVotes,
-        r#"
+            r#"
         SELECT user_id,motie_id, vote
         FROM user_votes
         WHERE motie_id = ?
         "#,
-        motie_id
-    )
-            .fetch_all(&pool)
-            .await.unwrap();
+            motie_id
+        )
+        .fetch_all(&pool)
+        .await
+        .unwrap();
         assert_eq!(vote_result.len(), 1);
         assert_eq!(vote_result.first().unwrap().user_id, user_id);
         assert_eq!(vote_result.first().unwrap().vote, vote);
-
     }
-
 }

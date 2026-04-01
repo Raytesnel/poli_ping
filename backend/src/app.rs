@@ -16,13 +16,14 @@ pub struct AppState {
     pub llm: Arc<dyn LlmService + Send + Sync>,
 }
 
-pub fn create_app(pool: SqlitePool) -> (Router, AppState)  {
+pub fn create_app(pool: SqlitePool) -> (Router, AppState) {
     let cors = CorsLayer::new()
         .allow_origin(Any)
         .allow_methods(Any)
         .allow_headers(Any);
 
-    let state = AppState { pool,
+    let state = AppState {
+        pool,
         api: Arc::new(RealMotieApi),
         llm: Arc::new(RealLlmService),
     };
@@ -36,6 +37,8 @@ pub fn create_app(pool: SqlitePool) -> (Router, AppState)  {
 }
 
 pub async fn run(app: Router) {
-    let listener = tokio::net::TcpListener::bind(BASE_URL_BACKEND).await.unwrap();
+    let listener = tokio::net::TcpListener::bind(BASE_URL_BACKEND)
+        .await
+        .unwrap();
     axum::serve(listener, app).await.unwrap();
 }

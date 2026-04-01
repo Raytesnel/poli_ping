@@ -51,7 +51,7 @@ mod tests {
         let user_id = "Ash";
         let vote = "tegen";
         // When
-        let result = insert_user_vote(&pool, &user_id, motie_id as i32, vote).await;
+        let result = insert_user_vote(&pool, user_id, motie_id as i32, vote).await;
         // Then
         assert!(result.is_ok());
         let vote_result = sqlx::query_as!(

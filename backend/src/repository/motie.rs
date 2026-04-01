@@ -224,8 +224,8 @@ mod tests {
             description: "Description".into(),
             result: "Aangenomen".into(),
             timestamp: "2026-02-05".into(),
-            votes: votes,
-            documents: documents,
+            votes,
+            documents,
         };
         // When
         let id = insert_motie(&pool, &motie).await.unwrap();
@@ -244,7 +244,7 @@ mod tests {
         let party = "D66";
         let vote = "tegen";
         // When
-        insert_party_vote(&pool, motie_id.clone(), party, vote)
+        insert_party_vote(&pool, motie_id, party, vote)
             .await
             .unwrap();
         // Then
@@ -266,7 +266,7 @@ mod tests {
         let motie_id = seed_motie(&pool).await;
         let document_id = "some_id".to_string();
         // When
-        insert_documents(&document_id, motie_id.clone(), &pool)
+        insert_documents(&document_id, motie_id, &pool)
             .await
             .unwrap();
         // Then
@@ -346,10 +346,10 @@ mod tests {
         // Given
         let motie_id = seed_motie(&pool).await;
         let party = "D66";
-        seed_vote(&pool, motie_id as i32, &party, "tegen").await;
-        seed_vote(&pool, motie_id as i32, &party, "voor").await;
+        seed_vote(&pool, motie_id as i32, party, "tegen").await;
+        seed_vote(&pool, motie_id as i32, party, "voor").await;
         // When
-        let result_votes = get_party_votes(&pool, motie_id.clone()).await.unwrap();
+        let result_votes = get_party_votes(&pool, motie_id).await.unwrap();
 
         // Then
         for result in &result_votes {

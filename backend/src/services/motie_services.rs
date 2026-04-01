@@ -1,7 +1,7 @@
 use crate::models::api_models::{ApiResponse, MotieTransformed};
 use crate::repository::motie;
 use crate::repository::motie::existing_ids;
-use crate::services::llm::{LlmService, convert_with_llm};
+use crate::services::llm::LlmService;
 use async_trait::async_trait;
 use axum::{Json, http::StatusCode};
 use chrono::Local;
@@ -99,7 +99,7 @@ async fn transform_moties(moties: ApiResponse) -> Result<Vec<MotieTransformed>, 
                 result: besluit_result.trim_end_matches('.').to_string(),
                 timestamp: m.gewijzigd_op,
                 votes,
-                documents: documents,
+                documents,
             };
 
             result.push(motie);
@@ -152,7 +152,7 @@ pub async fn sync_latest_moties(
 }
 
 pub async fn get_next_motie(pool: &SqlitePool, user_id: &str) -> Result<MotieDto, anyhow::Error> {
-    let motie = motie::get_next_unseen_motie(pool, &user_id)
+    let motie = motie::get_next_unseen_motie(pool, user_id)
         .await?
         .ok_or_else(|| anyhow::anyhow!("No more moties"))?;
     let votes = motie::get_party_votes(pool, motie.id).await?;

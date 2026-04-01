@@ -29,8 +29,8 @@ when a new user is used
 then progress should be 0:2
 
 */
-mod helpers;
-use helpers::{seed_motie, test_server};
+mod common;
+use common::helpers::{seed_motie, test_server};
 use shared::{GET_NEXT_MOTIE, MotieDto};
 use sqlx::SqlitePool;
 

@@ -11,7 +11,7 @@ use sqlx::SqlitePool;
 use tracing::{debug, info};
 
 #[async_trait]
-pub trait MotieApi: Send + Sync  {
+pub trait MotieApi: Send + Sync {
     async fn fetch_moties(&self) -> Result<ApiResponse, anyhow::Error>;
 }
 pub struct RealMotieApi;
@@ -23,7 +23,8 @@ impl MotieApi for RealMotieApi {
 }
 
 pub async fn get_moties(api: &dyn MotieApi) -> Result<Json<Vec<MotieTransformed>>, StatusCode> {
-    let moties = api.fetch_moties()
+    let moties = api
+        .fetch_moties()
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -191,26 +192,12 @@ pub async fn get_user_motie_progress(
         total: total.0,
     })
 }
-/* unit tests:
-sync_latest_moties should return a list of moties from the mocked api
-sync_latest_moties should return empty list of moties when no new moties are from the mocked api
-sync_latest_moties should insert the moties into the db when new moties are from mocked api
-sync_latest_moties should call the mocked LLM api for converting the moties to human readable moties.
-
-get_next_motie should return the first motie of the DB
-get next moties url when no moties available should return 'no more moties'
-get next moties url when all moties are voted should return 'no more moties'
-
-get progress url for user when no moties available should return 100%
-get progress url for user when a random percentage complete should return correct numbers
-get progress url when multiple items are voted should return 100%
-
- */
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::models::api_models::{Besluit, Document, Stemming, Zaak};
     use crate::services::llm::LlmResponse;
+    use std::sync::{Arc, Mutex};
 
     struct MockApi {
         response: ApiResponse,
@@ -223,58 +210,71 @@ mod tests {
         }
     }
 
-    struct MockLlm;
-
+    struct MockLlm {
+        response: LlmResponse,
+        calls: Arc<Mutex<u32>>,
+    }
     #[async_trait]
     impl LlmService for MockLlm {
-        async fn convert(&self, motie: &MotieTransformed) -> LlmResponse {
-            LlmResponse {
-                titel_kort: format!("SHORT {}", motie.title),
-                beschrijving: "mock description".to_string(),
-                kamerleden: vec!["D66".to_string(), "ProNL".to_string()],
-                thema: "mock description".to_string(),
-                tags: vec!["mock".to_string(), "test".to_string()],
-            }
+        async fn convert(&self, _motie: &MotieTransformed) -> LlmResponse {
+            let mut calls = self.calls.lock().unwrap();
+            *calls += 1;
+            self.response.clone()
         }
     }
 
-    #[sqlx::test]
-    async fn sync_latest_moties_witouth_moties_returns_empty_list(pool: SqlitePool) {}
-    #[sqlx::test]
-    async fn sync_latest_moties_with_moties_returns_list_moties(pool: SqlitePool) {
-        let api = MockApi {
-            response: ApiResponse {
-                value: vec![Zaak {
-                    id: "123".to_string(),
-                    titel: "".to_string(),
-                    onderwerp: Some("test".to_string()),
-                    gewijzigd_op: "2024-6-10".to_string(),
-                    besluit: vec![Besluit {
-                        id: "1234".to_string(),
-                        besluit_tekst: Some("voor".to_string()),
-                        stemming: vec![
-                            Stemming {
-                                id: "1234".to_string(),
-                                soort: "voor".to_string(),
-                                actor_fractie: Some("D66".to_string()),
-                            },
-                            Stemming {
-                                id: "1234".to_string(),
-                                soort: "tegen".to_string(),
-                                actor_fractie: Some("PVV".to_string()),
-                            },
-                        ],
-                    }],
-                    document: vec![
-                        Document {
-                            id: "123".to_string(),
-                        }
+    fn example_api_response_with_one_motie() -> ApiResponse {
+        ApiResponse {
+            value: vec![Zaak {
+                id: "123".to_string(),
+                titel: "".to_string(),
+                onderwerp: Some("test".to_string()),
+                gewijzigd_op: "2024-6-10".to_string(),
+                besluit: vec![Besluit {
+                    id: "1234".to_string(),
+                    besluit_tekst: Some("Aangenomen.".to_string()),
+                    stemming: vec![
+                        Stemming {
+                            id: "1234".to_string(),
+                            soort: "voor".to_string(),
+                            actor_fractie: Some("D66".to_string()),
+                        },
+                        Stemming {
+                            id: "1234".to_string(),
+                            soort: "tegen".to_string(),
+                            actor_fractie: Some("PVV".to_string()),
+                        },
                     ],
                 }],
-            },
-        };
+                document: vec![Document {
+                    id: "123".to_string(),
+                }],
+            }],
+        }
+    }
+    fn example_llm_response() -> LlmResponse {
+        LlmResponse {
+            titel_kort: "SHORT TITLE".to_string(),
+            beschrijving: "mock description".to_string(),
+            kamerleden: vec!["D66".to_string(), "ProNL".to_string()],
+            thema: "mock description".to_string(),
+            tags: vec!["mock".to_string(), "test".to_string()],
+        }
+    }
+    fn mock_api_with(data: ApiResponse) -> MockApi {
+        MockApi { response: data }
+    }
 
-        let llm = MockLlm;
+    fn mock_llm() -> MockLlm {
+        MockLlm {
+            response: example_llm_response(),
+            calls: Arc::new(Mutex::new(0)),
+        }
+    }
+    #[sqlx::test]
+    async fn sync_latest_moties_with_moties_returns_list_moties(pool: SqlitePool) {
+        let api = mock_api_with(example_api_response_with_one_motie());
+        let llm = mock_llm();
 
         sync_latest_moties(&pool, &api, &llm).await.unwrap();
 
@@ -284,5 +284,60 @@ mod tests {
             .unwrap();
         println!("count: {:?}", count);
         assert!(count.0 > 0);
+    }
+    fn empty_api_response() -> ApiResponse {
+        ApiResponse { value: vec![] }
+    }
+    #[sqlx::test]
+    async fn sync_latest_moties_witouth_moties_returns_empty_list(pool: SqlitePool) {
+        let api = mock_api_with(empty_api_response());
+        let llm = mock_llm();
+
+        sync_latest_moties(&pool, &api, &llm).await.unwrap();
+
+        let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM moties")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+
+        assert_eq!(count.0, 0);
+    }
+
+    #[sqlx::test]
+    async fn sync_latest_moties_no_new_moties(pool: SqlitePool) {
+        let api = mock_api_with(example_api_response_with_one_motie());
+        let llm = mock_llm();
+
+        // first insert
+        sync_latest_moties(&pool, &api, &llm).await.unwrap();
+        let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM moties")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+
+        assert_eq!(count.0, 1);
+        // second run (should not insert duplicates)
+        sync_latest_moties(&pool, &api, &llm).await.unwrap();
+
+        let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM moties")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+
+        assert_eq!(count.0, 1);
+    }
+    #[sqlx::test]
+    async fn sync_calls_llm(pool: SqlitePool) {
+        let api = mock_api_with(example_api_response_with_one_motie());
+
+        let calls = Arc::new(Mutex::new(0));
+        let llm = MockLlm {
+            response: example_llm_response(),
+            calls: calls.clone(),
+        };
+
+        sync_latest_moties(&pool, &api, &llm).await.unwrap();
+
+        assert_eq!(*calls.lock().unwrap(), 1);
     }
 }

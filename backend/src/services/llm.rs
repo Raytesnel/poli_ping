@@ -2,13 +2,13 @@ use async_trait::async_trait;
 use pdf_extract::extract_text_from_mem;
 use reqwest::Client;
 use serde_json::json;
-use tokio::time::{sleep, Duration};
+use tokio::time::{Duration, sleep};
 
 use crate::models::api_models::MotieTransformed;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info, warn};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct LlmResponse {
     pub titel_kort: String,
     pub kamerleden: Vec<String>,

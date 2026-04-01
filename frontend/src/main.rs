@@ -40,10 +40,10 @@ fn Title() -> Element {
     }
 }
 
-
 #[component]
-fn ProgressComponent(progress_state: Resource<Result<MotieProgressDto, reqwest::Error>>) -> Element {
-
+fn ProgressComponent(
+    progress_state: Resource<Result<MotieProgressDto, reqwest::Error>>,
+) -> Element {
     let value = progress_state.read();
     let Some(result) = value.as_ref() else {
         return rsx!(div { "Loading..." });
@@ -103,31 +103,31 @@ fn MotionView(progress_state: Resource<Result<MotieProgressDto, reqwest::Error>>
         }
     };
     let content = motion_resource.value().with(|maybe_motion| {
-        progress_state.value().with(|maybe_progress| {
-            match (maybe_motion, maybe_progress) {
+        progress_state
+            .value()
+            .with(|maybe_progress| match (maybe_motion, maybe_progress) {
                 (Some(Ok(motion)), Some(Ok(progress))) => {
                     let motie_id = motion.id;
                     rsx! {
-                    MotionCard {
-                        motion: motion.clone(),
-                        on_vote: move |vote_value| vote_and_refresh(motie_id, vote_value),
+                        MotionCard {
+                            motion: motion.clone(),
+                            on_vote: move |vote_value| vote_and_refresh(motie_id, vote_value),
+                        }
                     }
-                }
                 }
 
                 (Some(Err(e)), _) => {
-                    event!(Level::ERROR,"Motion error: {:?}", e);
+                    event!(Level::ERROR, "Motion error: {:?}", e);
                     rsx!(div { "Failed to fetch motion." })
                 }
 
                 (_, Some(Err(e))) => {
-                    event!(Level::ERROR,"Progress error: {:?}", e);
+                    event!(Level::ERROR, "Progress error: {:?}", e);
                     rsx!(div { "Failed to fetch progress." })
                 }
 
                 _ => rsx!(div { "Loading..." }),
-            }
-        })
+            })
     });
     rsx!(div {id: "motion_view", {content} })
 }
@@ -140,10 +140,7 @@ fn MotionView(progress_state: Resource<Result<MotieProgressDto, reqwest::Error>>
 /// - `progress`: The voting progress for the user (`MotieProgressDto`).
 /// - `on_vote`: Callback to trigger when the user votes.
 #[component]
-fn MotionCard(
-    motion: MotieDto,
-    on_vote: EventHandler<&'static str>,
-) -> Element {
+fn MotionCard(motion: MotieDto, on_vote: EventHandler<&'static str>) -> Element {
     rsx! {
         Card {
             CardHeader {

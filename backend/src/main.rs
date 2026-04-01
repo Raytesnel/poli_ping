@@ -1,9 +1,9 @@
+use crate::app::create_app;
 use crate::services::llm::RealLlmService;
 use crate::services::motie_services;
 use crate::services::motie_services::RealMotieApi;
 use sqlx::SqlitePool;
 use tracing::{debug, info};
-use crate::app::create_app;
 
 mod app;
 mod models;
@@ -11,34 +11,34 @@ mod repository;
 mod routes;
 mod services;
 
-
 pub async fn open_sqlite_pool() -> SqlitePool {
     dotenvy::dotenv().ok();
 
-    let database_url = std::env::var("DATABASE_URL")
-        .expect("DATABASE_URL must be set");
+    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
 
     info!("DATABASE_URL: {database_url}");
 
-    let db_path = database_url.strip_prefix("sqlite://")
+    let db_path = database_url
+        .strip_prefix("sqlite://")
         .unwrap_or(&database_url);
 
     debug!("Resolved DB path: {db_path}");
     let abs_path = std::env::current_dir().unwrap().join(db_path);
     debug!("Absolute path: {:?}", abs_path);
 
-    SqlitePool::connect(&database_url).await.unwrap_or_else(|err| {
-        panic!(
-            "Failed to open SQLite database.\n\
+    SqlitePool::connect(&database_url)
+        .await
+        .unwrap_or_else(|err| {
+            panic!(
+                "Failed to open SQLite database.\n\
              DATABASE_URL: {}\n\
              Resolved path: {}\n\
              Absolute path: {:?}\n\
              Error: {}",
-            database_url, db_path, abs_path, err
-        )
-    })
+                database_url, db_path, abs_path, err
+            )
+        })
 }
-
 
 #[tokio::main]
 async fn main() {
@@ -49,10 +49,9 @@ async fn main() {
         .compact()
         .init();
     debug!("log level: {log_level}");
-    let pool = open_sqlite_pool()
-        .await;
-    let (app,state) = create_app(pool);
-    motie_services::sync_latest_moties(&state.pool,state.api.as_ref(),state.llm.as_ref())
+    let pool = open_sqlite_pool().await;
+    let (app, state) = create_app(pool);
+    motie_services::sync_latest_moties(&state.pool, state.api.as_ref(), state.llm.as_ref())
         .await
         .expect("Failed to sync moties");
     app::run(app).await;

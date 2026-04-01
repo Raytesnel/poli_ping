@@ -1,20 +1,23 @@
 use crate::app::AppState;
 use crate::models::api_models::MotieTransformed;
 use crate::services::motie_services;
-use axum::{extract::State, http::StatusCode, routing::get, routing::post, Json, Router};
-use shared::{MotieDto, MotieProgressDto, UserIdRequest, GET_MOTIE_PROGRESS};
+use axum::{Json, Router, extract::State, http::StatusCode, routing::get, routing::post};
+use shared::{GET_MOTIE_PROGRESS, MotieDto, MotieProgressDto, UserIdRequest};
 use shared::{GET_MOTIES, GET_NEXT_MOTIE};
 
 pub fn routes() -> Router<AppState> {
     Router::new()
-        .route(GET_MOTIES,get(get_moties),
-        )
+        .route(GET_MOTIES, get(get_moties))
         .route(GET_NEXT_MOTIE, post(get_nex_user_motie))
         .route(GET_MOTIE_PROGRESS, post(get_user_progress))
 }
 
-async fn get_moties(State(state): State<AppState>) -> Result<Json<Vec<MotieTransformed>>, StatusCode> {
-    motie_services::get_moties(state.api.as_ref()).await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+async fn get_moties(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<MotieTransformed>>, StatusCode> {
+    motie_services::get_moties(state.api.as_ref())
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
 }
 
 async fn get_nex_user_motie(

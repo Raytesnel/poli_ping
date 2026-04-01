@@ -30,10 +30,9 @@ then progress should be 0:2
 
 */
 mod helpers;
+use helpers::{seed_motie, test_server};
+use shared::{GET_NEXT_MOTIE, MotieDto};
 use sqlx::SqlitePool;
-use helpers::{test_server, seed_motie};
-use shared::{MotieDto, GET_NEXT_MOTIE};
-
 
 ///Given the state of 1 unvoted motie
 ///When asks the next unvoted motie

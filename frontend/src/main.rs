@@ -88,12 +88,10 @@ fn MotionView(progress_state: Resource<Result<MotieProgressDto, reqwest::Error>>
 
     // helper function for voting
     let vote_and_refresh = {
-        let motion_resource = motion_resource.clone(); // clone for closure
-        let progress_state = progress_state.clone(); // clone for closure
         move |motie_id: i32, vote_value: &'static str| {
             let client = client_handle.clone();
-            let mut motion_resource = motion_resource.clone(); // clone for async
-            let mut progress_state = progress_state.clone(); // clone for async
+            let mut motion_resource = motion_resource;
+            let mut progress_state = progress_state;
             spawn(async move {
                 send_vote(client, motie_id, vote_value).await;
                 info!("motie id {} sent vote", motie_id);
@@ -106,7 +104,7 @@ fn MotionView(progress_state: Resource<Result<MotieProgressDto, reqwest::Error>>
         progress_state
             .value()
             .with(|maybe_progress| match (maybe_motion, maybe_progress) {
-                (Some(Ok(motion)), Some(Ok(progress))) => {
+                (Some(Ok(motion)), Some(Ok(_progress))) => {
                     let motie_id = motion.id;
                     rsx! {
                         MotionCard {
@@ -193,7 +191,7 @@ async fn send_vote(client: Client, motie_id: i32, vote_value: &str) {
     };
 
     let _ = client
-        .post(&format!("http://{}{}", BASE_URL_BACKEND, POST_USER_VOTE))
+        .post(format!("http://{}{}", BASE_URL_BACKEND, POST_USER_VOTE))
         .json(&vote)
         .send()
         .await;
@@ -212,7 +210,7 @@ async fn fetch_motion() -> Result<MotieDto, reqwest::Error> {
         user_id: USER_ID.to_string(),
     };
     let resp = Client::new()
-        .post(&format!("http://{}{}", BASE_URL_BACKEND, GET_NEXT_MOTIE))
+        .post(format!("http://{}{}", BASE_URL_BACKEND, GET_NEXT_MOTIE))
         .json(&json_request)
         .send()
         .await?;
@@ -232,10 +230,7 @@ async fn fetch_motie_progress() -> Result<MotieProgressDto, reqwest::Error> {
         user_id: USER_ID.to_string(),
     };
     let resp = Client::new()
-        .post(&format!(
-            "http://{}{}",
-            BASE_URL_BACKEND, GET_MOTIE_PROGRESS
-        ))
+        .post(format!("http://{}{}", BASE_URL_BACKEND, GET_MOTIE_PROGRESS))
         .json(&req)
         .send()
         .await?;

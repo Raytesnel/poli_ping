@@ -209,3 +209,38 @@ pub async fn get_document_text(
     debug!("document extracted: \n\n{}", combined_text);
     Ok(combined_text)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn extract_text_parses_valid_response() {
+        let response = r#"
+        {
+          "candidates": [{
+            "content": {
+              "parts": [{
+                "text": "{\"titel_kort\":\"Test\",\"kamerleden\":[\"A\"],\"beschrijving\":\"B\",\"thema\":\"C\",\"tags\":[\"x\"]}"
+              }]
+            }
+          }]
+        }
+        "#;
+
+        let result = extract_text(response);
+
+        assert!(result.is_some());
+        let parsed = result.unwrap();
+        assert_eq!(parsed.titel_kort, "Test");
+    }
+
+    #[test]
+    fn parse_pdf_text_handles_invalid_pdf() {
+        let fake_pdf = b"not a real pdf";
+
+        let result = parse_pdf_text(fake_pdf);
+
+        assert!(result.is_err());
+    }
+}
